@@ -60,8 +60,8 @@ SOFTWARE.
  *
  * Minimum:
  * - [X] Support float
- * - [ ] Support int
- * - [ ] Support bool
+ * - [X] Support int
+ * - [X] Support bool
  * - [ ] Support char*
  *
  * Ideal:
@@ -213,7 +213,7 @@ typedef enum
 {
     _ADJUST_FLOAT = 0,
     _ADJUST_INT,
-    /* _ADJUST_BOOL, */
+    _ADJUST_BOOL,
     /* _ADJUST_STRING */
 } _ADJUST_TYPE;
 
@@ -287,10 +287,15 @@ void _adjust_add(void *val, _ADJUST_TYPE type, char *file_name,
     int name = val;                                                            \
     _adjust_add(&name, _ADJUST_INT, __FILE__, __LINE__)
 
-/**** TODO: Adjust doens't work for these types yet ****/
-#define ADJUST_VAR_BOOL(name, val) bool name = val
-#define ADJUST_CONST_BOOL(name, val) const bool name = val
+#define ADJUST_VAR_BOOL(name, val)                                             \
+    bool name = val;                                                           \
+    _adjust_add(&name, _ADJUST_BOOL, __FILE__, __LINE__)
 
+#define ADJUST_CONST_BOOL(name, val)                                           \
+    bool name = val;                                                           \
+    _adjust_add(&name, _ADJUST_BOOL, __FILE__, __LINE__)
+
+/**** TODO: Adjust doens't work for these types yet ****/
 #define ADJUST_VAR_STRING(name, val) char *name = val
 #define ADJUST_CONST_STRING(name, val) const char *name = val
 /*******************************************************/
@@ -385,6 +390,31 @@ void adjust_update(void)
                     exit(1);
                 }
 
+                break;
+            }
+
+            case _ADJUST_BOOL:
+            {
+                printf("%s\n", value_start);
+                if (strncmp(value_start, "TRUE", 4) == 0 ||
+                    strncmp(value_start, "true", 4) == 0)
+                {
+                    *(bool *)e.data = TRUE;
+                }
+                else if (strncmp(value_start, "FALSE", 5) == 0 ||
+                         strncmp(value_start, "false", 5) == 0)
+                {
+                    *(bool *)e.data = FALSE;
+                }
+                else
+                {
+                    fprintf(
+                        stderr,
+                        "Error: failed to parse bool (true or false): %s:%lu\n",
+                        af.file_name, e.line_number);
+                    fclose(file);
+                    exit(1);
+                }
                 break;
             }
 
