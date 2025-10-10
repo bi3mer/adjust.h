@@ -60,14 +60,16 @@ SOFTWARE.
  *
  * Minimum:
  * - [X] Support float
+ * - [ ] Support int
  * - [ ] Support bool
  * - [ ] Support char*
- * - [ ] Support int
  *
  * Ideal:
  * - [ ] store file modification times, and only re-read when necessary
  * - [ ] threaded option, one thread per file. Will need to be lightweight,
  *       though
+ * - [ ] I want .clang-format to work with a casey-muratori style swtich
+ *       statement, but I haven't been able to figure it out
  ******************************************************************************/
 
 /******************************************************************************/
@@ -210,7 +212,7 @@ static void _da_free(void *da)
 typedef enum
 {
     _ADJUST_FLOAT = 0,
-    /* _ADJUST_INT, */
+    _ADJUST_INT,
     /* _ADJUST_BOOL, */
     /* _ADJUST_STRING */
 } _ADJUST_TYPE;
@@ -277,10 +279,15 @@ void _adjust_add(void *val, _ADJUST_TYPE type, char *file_name,
     float name = val;                                                          \
     _adjust_add(&name, _ADJUST_FLOAT, __FILE__, __LINE__)
 
-/**** TODO: Adjust doens't work for these types yet ****/
-#define ADJUST_VAR_INT(name, val) int name = val
-#define ADJUST_CONST_INT(name, val) const int name = val
+#define ADJUST_VAR_INT(name, val)                                              \
+    int name = val;                                                            \
+    _adjust_add(&name, _ADJUST_INT, __FILE__, __LINE__)
 
+#define ADJUST_CONST_INT(name, val)                                            \
+    int name = val;                                                            \
+    _adjust_add(&name, _ADJUST_INT, __FILE__, __LINE__)
+
+/**** TODO: Adjust doens't work for these types yet ****/
 #define ADJUST_VAR_BOOL(name, val) bool name = val
 #define ADJUST_CONST_BOOL(name, val) const bool name = val
 
@@ -345,7 +352,7 @@ void adjust_update(void)
                 exit(1);
             }
 
-            /* skip whie space after ',' */
+            /* skip white space after ',' */
             ++value_start;
             while (*value_start &&
                    (*value_start == ' ' || *value_start == '\t'))
@@ -364,11 +371,28 @@ void adjust_update(void)
                     fclose(file);
                     exit(1);
                 }
+
+                break;
             }
-            break;
+
+            case _ADJUST_INT:
+            {
+                if (sscanf(value_start, "%i", (int *)e.data) != 1)
+                {
+                    fprintf(stderr, "Error, failed to parse int: %s:%lu\n",
+                            af.file_name, e.line_number);
+                    fclose(file);
+                    exit(1);
+                }
+
+                break;
+            }
+
             default:
             {
                 fprintf(stderr, "Error: unhandled adjust type: %u\n", e.type);
+                fclose(file);
+                exit(1);
             }
             }
         }
