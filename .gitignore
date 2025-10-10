@@ -19,3 +19,4 @@ CMakeUserPresets.json
 #cmake-build-*
 
 a.out
+*.dSYM

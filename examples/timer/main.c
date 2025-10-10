@@ -11,13 +11,16 @@ int main(void)
     ADJUST_CONST_FLOAT(gravity, -9.8f);
     ADJUST_VAR_FLOAT(a, 1.1f);
 
-    ADJUST_CONST_INT(b, 3);
-    ADJUST_VAR_INT(c, 10);
-    // ADJUST_VAR_FLOAT(d, 4.1f);
-    // ADJUST_VAR_FLOAT(e, 5.f);
-    // ADJUST_VAR_FLOAT(f, 100.f);
+    ADJUST_CONST_INT(b, 30);
+    ADJUST_VAR_INT(c, 1);
 
-    for (countdown = 5; countdown > 0; countdown--)
+    ADJUST_CONST_BOOL(d, FALSE);
+    ADJUST_VAR_BOOL(e, TRUE);
+
+    ADJUST_CONST_STRING(f, "Hello,");
+    ADJUST_VAR_STRING(g, "World!");
+
+    for (countdown = 10; countdown > 0; countdown--)
     {
         printf("You have %lu seconds to adjust...\n", countdown);
         sleep(1);
@@ -29,9 +32,10 @@ int main(void)
     printf("a: %f\n", a);
     printf("b: %i\n", b);
     printf("c: %i\n", c);
-    // printf("d: %f\n", d);
-    // printf("e: %f\n", e);
-    // printf("f: %f\n", f);
+    printf("d: %i\n", d);
+    printf("e: %i\n", e);
+    printf("f: %s\n", f);
+    printf("g: %s\n", g);
 
     adjust_cleanup();
 }

@@ -22,9 +22,9 @@ SOFTWARE.
 #ifndef __ADJUST__
 #define __ADJUST__
 /******************************************************************************
- * Documentation
+ * Documentation:
  *
- * Adjust let's you modify values from code while your application is running.
+ * Adjust let's you adjust values from code while your application is running.
  *
  * The API is meant to be simple:
  *
@@ -32,23 +32,22 @@ SOFTWARE.
  * int main(void)
  * {
  *      adjust_init();
- *      ADJUST_FLOAT(gravity, -9.8f);
+ *      ADJUST_CONST_FLOAT(gravity, -9.8f);
+ *      ADJUST_CONST_INT(ball_radius, 20);
+ *      ADJUST_VAR_STRING(title, "Adjust Example");
  *      ...
- *      adjust_cleanup(); // optional call that will clean up memory
+ *      adjust_cleanup(); // optional
  * }
  * ```
  *
  * If you compile in debug mode (e.g., `cmake -DCMAKE_BUILD_TYPE=Debug ..`),
- * then the gravity will be a variable that can be changed. If you compile in
- * production mode (e.g., `cmake -DCMAKE_BUILD_TYPE=Release ..`), then gravity
- * will be a constant that can't be changed.
+ * then the all three will not be const so Adjust can modify them. If you
+ * compile in production mode (e.g., `cmake -DCMAKE_BUILD_TYPE=Release ..`),
+ * then `gravity` and `ball_radius` will be a constant.
  *
- * I hope to update this down the line such that it Adjust can work with more
- * than just floats.
- *
- * The idea is not my own, I first encountered it in a blog post, and there
- * have been several other resources that have influences how I programmed this
- * tool:
+ * The idea for this tool is not my own, I first encountered it in a blog post,
+ * and there have been several other resources that have influenced how I
+ * programmed this tool:
  *
  *  - https://blog.voxagon.se/2018/03/13/hot-reloading-hardcoded-parameters.html
  *  - https://www.bytesbeneath.com/p/dynamic-arrays-in-c
@@ -62,9 +61,12 @@ SOFTWARE.
  * - [X] Support float
  * - [X] Support int
  * - [X] Support bool
- * - [ ] Support char*
+ * - [X] Support char*
+ * - [ ] Support char (how to handle empty char?)
+ * - [ ] Test for empty string
  * - [ ] Current ADJUST_VAR_ and ADJUST_CONST work with a variable declaration
  *       and then a line of code after. This, though, is not c89 compliant...
+ *       The easy fix is to go go c99, but I would like to stay in C89.
  *
  * Ideal:
  * - [ ] store file modification times, and only re-read when necessary
@@ -76,6 +78,8 @@ SOFTWARE.
 
 /******************************************************************************/
 /* bool for c89 */
+#include <_string.h>
+#include <malloc/_malloc.h>
 #ifndef bool
 typedef int bool;
 
@@ -258,10 +262,10 @@ static void _adjust_add(void *val, _ADJUST_TYPE type, const char *file_name,
     _da_ensure_capacity((void **)&(_files[file_index].adjustables), 1);
 
     adjustables = _files[file_index].adjustables;
-
     adjustables[adjustable_index].type = type;
-    adjustables[adjustable_index].data = val;
     adjustables[adjustable_index].line_number = line_number;
+    adjustables[adjustable_index].data = val;
+    /* NOTE: if this is a string, we are storing a char** not a char* */
 
     _da_increment_length(_files[file_index].adjustables);
 }
@@ -291,12 +295,26 @@ static void _adjust_add(void *val, _ADJUST_TYPE type, const char *file_name,
     _adjust_add(&name, _ADJUST_BOOL, __FILE__, __LINE__)
 
 #define ADJUST_VAR_STRING(name, val)                                           \
-    char *name = val;                                                          \
-    _adjust_add(&name, _ADJUST_STRING, __FILE__, __LINE__)
+    char *name = NULL;                                                         \
+    do                                                                         \
+    {                                                                          \
+        const char *_temp = val;                                               \
+        size_t _len = strlen(_temp) + 1;                                       \
+        name = malloc(sizeof(char) * _len);                                    \
+        memcpy(name, _temp, _len);                                             \
+        _adjust_add(&name, _ADJUST_STRING, __FILE__, __LINE__);                \
+    } while (0)
 
 #define ADJUST_CONST_STRING(name, val)                                         \
-    char *name = val;                                                          \
-    _adjust_add(&name, _ADJUST_STRING, __FILE__, __LINE__)
+    char *name = NULL;                                                         \
+    do                                                                         \
+    {                                                                          \
+        const char *_temp = val;                                               \
+        size_t _len = strlen(_temp) + 1;                                       \
+        name = malloc(sizeof(char) * _len);                                    \
+        memcpy(name, _temp, _len);                                             \
+        _adjust_add(&name, _ADJUST_STRING, __FILE__, __LINE__);                \
+    } while (0)
 
 static void adjust_init(void)
 {
@@ -393,22 +411,24 @@ static void adjust_update(void)
 
             case _ADJUST_BOOL:
             {
-                if (strncmp(value_start, "TRUE", 4) == 0 ||
+                if (*value_start == '0' ||
+                    strncmp(value_start, "TRUE", 4) == 0 ||
                     strncmp(value_start, "true", 4) == 0)
                 {
                     *(bool *)e.data = TRUE;
                 }
-                else if (strncmp(value_start, "FALSE", 5) == 0 ||
+                else if (*value_start == '1' ||
+                         strncmp(value_start, "FALSE", 5) == 0 ||
                          strncmp(value_start, "false", 5) == 0)
                 {
                     *(bool *)e.data = FALSE;
                 }
                 else
                 {
-                    fprintf(
-                        stderr,
-                        "Error: failed to parse bool (true or false): %s:%lu\n",
-                        af.file_name, e.line_number);
+                    fprintf(stderr,
+                            "Error: failed to parse bool (true or false): "
+                            "%s:%lu\n",
+                            af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
                 }
@@ -417,7 +437,10 @@ static void adjust_update(void)
 
             case _ADJUST_STRING:
             {
-                char *quote_start = strchr(value_start, '"');
+                char *quote_start, *quote_end, *new_string;
+                size_t string_length;
+
+                quote_start = strchr(value_start, '"');
                 if (!quote_start)
                 {
                     fprintf(stderr,
@@ -428,35 +451,39 @@ static void adjust_update(void)
                     exit(1);
                 }
 
-                char *quote_end = strchr(value_start + 1, '"');
+                /* Potential bug: "" */
+                /* Bug: "colan \"bug\" biemer" */
+                ++quote_start;
+                quote_end = strchr(quote_start, '"');
                 if (!quote_end)
                 {
                     fprintf(stderr,
-                            "Error: failed to find starting quotation (\"): "
+                            "Error: failed to find ending quotation (\"): "
                             "%s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
                 }
 
-                /*
-                size_t len = quote_end - quote_start - 1;
-                char *new_string = malloc(len + 1);
+                string_length = (size_t)(quote_end - quote_start);
+                new_string = realloc(*(char **)e.data,
+                                     sizeof(char) * (string_length + 1));
                 if (!new_string)
                 {
                     fprintf(stderr,
-                            "Error: failed to allocate string memory\n");
+                            "Error: failed to reallocate string memory for: "
+                            "%s:%lu\n",
+                            af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
                 }
 
-                memcpy(new_string, quote_start + 1, len);
-                new_string[len] = '\0';
+                memcpy(new_string, quote_start, string_length);
+                new_string[string_length] = '\0';
 
                 *(char **)e.data = new_string;
-                */
+                break;
             }
-            break;
 
             default:
             {
@@ -473,11 +500,24 @@ static void adjust_update(void)
 
 static void adjust_cleanup(void)
 {
-    size_t i;
+    _ADJUST_ENTRY *adjustables;
+    size_t i, j, num_adjustables;
     const size_t length = _da_length(_files);
     for (i = 0; i < length; ++i)
     {
-        _da_free(_files[i].adjustables);
+        adjustables = _files[i].adjustables;
+        num_adjustables = _da_length(_files[i].adjustables);
+        for (j = 0; j < num_adjustables; ++j)
+        {
+            if (adjustables[j].type == _ADJUST_STRING)
+            {
+                char **string_ptr = (char **)adjustables[j].data;
+                free(*string_ptr);
+                *string_ptr = NULL;
+            }
+        }
+
+        _da_free(adjustables);
     }
 
     _da_free(_files);
