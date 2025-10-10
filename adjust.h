@@ -300,7 +300,7 @@ void adjust_update(void)
     _ADJUST_ENTRY e;
     size_t file_index, data_index, data_length;
     FILE *file;
-    char *adjust_pos;
+    char *value_start;
     char buffer[256];
     size_t current_line;
 
@@ -334,34 +334,42 @@ void adjust_update(void)
                 ++current_line;
             }
 
-            adjust_pos = strstr(buffer, ");");
-            if (adjust_pos == NULL)
+            value_start = strchr(buffer, ',');
+            if (value_start == NULL)
             {
                 fprintf(stderr,
-                        "Error: unable to find valid end of line `);`: "
+                        "Error: no comma found in ADJUST macro: "
                         "%s:%lu\n",
                         af.file_name, e.line_number);
                 fclose(file);
                 exit(1);
             }
 
-            // TODO: error handling to prevent infinite loop via bad editing
-            // from developer
-            while (*adjust_pos != ' ')
+            /* skip whie space after ',' */
+            ++value_start;
+            while (*value_start &&
+                   (*value_start == ' ' || *value_start == '\t'))
             {
-                --adjust_pos;
+                ++value_start;
             }
 
-            ++adjust_pos;
-            // TODO: use the type of the adjustable to decide how to scan
-            // it. I think something speciall will have to be done for bool
-            // since we are looking for true or false, else we error out.
-            if (sscanf(adjust_pos, "%f", (float *)e.data) != 1)
+            switch (e.type)
             {
-                fprintf(stderr, "Error, failed to parse float: %s:%lu\n",
-                        af.file_name, e.line_number);
-                fclose(file);
-                exit(1);
+            case _ADJUST_FLOAT:
+            {
+                if (sscanf(value_start, "%f", (float *)e.data) != 1)
+                {
+                    fprintf(stderr, "Error, failed to parse float: %s:%lu\n",
+                            af.file_name, e.line_number);
+                    fclose(file);
+                    exit(1);
+                }
+            }
+            break;
+            default:
+            {
+                fprintf(stderr, "Error: unhandled adjust type: %u\n", e.type);
+            }
             }
         }
 
