@@ -63,6 +63,8 @@ SOFTWARE.
  * - [X] Support int
  * - [X] Support bool
  * - [ ] Support char*
+ * - [ ] Current ADJUST_VAR_ and ADJUST_CONST work with a variable declaration
+ *       and then a line of code after. This, though, is not c89 compliant...
  *
  * Ideal:
  * - [ ] store file modification times, and only re-read when necessary
@@ -154,6 +156,7 @@ static void *_da_init(const size_t item_size, const size_t capacity)
 
 static void _da_ensure_capacity(void **da, size_t capacity_increase)
 {
+
     _DA_Header *h = ((_DA_Header *)(*da) - 1);
     if (h->length + capacity_increase > h->capacity)
     {
@@ -163,9 +166,8 @@ static void _da_ensure_capacity(void **da, size_t capacity_increase)
             new_capacity *= 2;
         }
 
-        const size_t new_size =
-            h->item_size * new_capacity + sizeof(_DA_Header);
-        h = (_DA_Header *)realloc(h, new_size);
+        h = (_DA_Header *)realloc(h, h->item_size * new_capacity +
+                                         sizeof(_DA_Header));
         if (!h)
         {
             fprintf(stderr, "Unable to resize dynamic array with realloc.\n");
@@ -192,13 +194,6 @@ static void _da_increment_length(void *da)
     }
 }
 
-static size_t _da_capacity(void *da)
-{
-    if (!da)
-        return 0;
-    return ((_DA_Header *)da - 1)->capacity;
-}
-
 static void _da_free(void *da)
 {
     if (da)
@@ -214,7 +209,7 @@ typedef enum
     _ADJUST_FLOAT = 0,
     _ADJUST_INT,
     _ADJUST_BOOL,
-    /* _ADJUST_STRING */
+    _ADJUST_STRING
 } _ADJUST_TYPE;
 
 typedef struct _ADJUST_ENTRY
@@ -226,14 +221,14 @@ typedef struct _ADJUST_ENTRY
 
 typedef struct _ADJUST_FILE
 {
-    char *file_name;
+    const char *file_name;
     _ADJUST_ENTRY *adjustables;
 } _ADJUST_FILE;
 
 _ADJUST_FILE *_files;
 
-void _adjust_add(void *val, _ADJUST_TYPE type, char *file_name,
-                 const int line_number)
+static void _adjust_add(void *val, _ADJUST_TYPE type, const char *file_name,
+                        const size_t line_number)
 {
     _ADJUST_ENTRY *adjustables;
     bool found = FALSE;
@@ -295,18 +290,21 @@ void _adjust_add(void *val, _ADJUST_TYPE type, char *file_name,
     bool name = val;                                                           \
     _adjust_add(&name, _ADJUST_BOOL, __FILE__, __LINE__)
 
-/**** TODO: Adjust doens't work for these types yet ****/
-#define ADJUST_VAR_STRING(name, val) char *name = val
-#define ADJUST_CONST_STRING(name, val) const char *name = val
-/*******************************************************/
+#define ADJUST_VAR_STRING(name, val)                                           \
+    char *name = val;                                                          \
+    _adjust_add(&name, _ADJUST_STRING, __FILE__, __LINE__)
 
-void adjust_init(void)
+#define ADJUST_CONST_STRING(name, val)                                         \
+    char *name = val;                                                          \
+    _adjust_add(&name, _ADJUST_STRING, __FILE__, __LINE__)
+
+static void adjust_init(void)
 {
     const size_t capacity = 4;
     _files = (_ADJUST_FILE *)_da_init(sizeof(_ADJUST_FILE), capacity);
 }
 
-void adjust_update(void)
+static void adjust_update(void)
 {
     _ADJUST_FILE af;
     _ADJUST_ENTRY e;
@@ -395,7 +393,6 @@ void adjust_update(void)
 
             case _ADJUST_BOOL:
             {
-                printf("%s\n", value_start);
                 if (strncmp(value_start, "TRUE", 4) == 0 ||
                     strncmp(value_start, "true", 4) == 0)
                 {
@@ -418,6 +415,49 @@ void adjust_update(void)
                 break;
             }
 
+            case _ADJUST_STRING:
+            {
+                char *quote_start = strchr(value_start, '"');
+                if (!quote_start)
+                {
+                    fprintf(stderr,
+                            "Error: failed to find starting quotation (\"): "
+                            "%s:%lu\n",
+                            af.file_name, e.line_number);
+                    fclose(file);
+                    exit(1);
+                }
+
+                char *quote_end = strchr(value_start + 1, '"');
+                if (!quote_end)
+                {
+                    fprintf(stderr,
+                            "Error: failed to find starting quotation (\"): "
+                            "%s:%lu\n",
+                            af.file_name, e.line_number);
+                    fclose(file);
+                    exit(1);
+                }
+
+                /*
+                size_t len = quote_end - quote_start - 1;
+                char *new_string = malloc(len + 1);
+                if (!new_string)
+                {
+                    fprintf(stderr,
+                            "Error: failed to allocate string memory\n");
+                    fclose(file);
+                    exit(1);
+                }
+
+                memcpy(new_string, quote_start + 1, len);
+                new_string[len] = '\0';
+
+                *(char **)e.data = new_string;
+                */
+            }
+            break;
+
             default:
             {
                 fprintf(stderr, "Error: unhandled adjust type: %u\n", e.type);
@@ -431,7 +471,7 @@ void adjust_update(void)
     }
 }
 
-void adjust_cleanup()
+static void adjust_cleanup(void)
 {
     size_t i;
     const size_t length = _da_length(_files);
