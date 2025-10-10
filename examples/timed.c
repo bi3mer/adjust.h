@@ -17,10 +17,8 @@ int main(void)
 
     for (countdown = 10; countdown > 0; countdown--)
     {
-        printf(
-            "You have %lu seconds to modify the value in gravity...\n",
-            countdown
-        );
+        printf("You have %lu seconds to modify the value in gravity...\n",
+               countdown);
 
         sleep(1);
     }
