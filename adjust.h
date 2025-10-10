@@ -31,15 +31,15 @@ SOFTWARE.
  * ```
  * int main(void)
  * {
- *      adjust_begin();
+ *      adjust_init();
  *      ADJUST_FLOAT(gravity, -9.8f);
  *      ...
- *      adjust_end(); // optional call that will clean up memory
+ *      adjust_cleanup(); // optional call that will clean up memory
  * }
  * ```
  *
  * If you compile in debug mode (e.g., `cmake -DCMAKE_BUILD_TYPE=Debug ..`),
- *then the gravity will be a variable that can be changed. If you compile in
+ * then the gravity will be a variable that can be changed. If you compile in
  * production mode (e.g., `cmake -DCMAKE_BUILD_TYPE=Release ..`), then gravity
  * will be a constant that can't be changed.
  *
@@ -59,7 +59,7 @@ SOFTWARE.
  * repository for example usage.
  *
  * Minimum:
- * - [ ] Support float
+ * - [X] Support float
  * - [ ] Support bool
  * - [ ] Support char*
  * - [ ] Support int
@@ -69,21 +69,6 @@ SOFTWARE.
  * - [ ] threaded option, one thread per file. Will need to be lightweight,
  *       though
  ******************************************************************************/
-
-#ifdef MODE_PRODUCTION
-/* In production mode, compile everything away */
-#define ADJUST_VAR_FLOAT(name, val) float name = val
-#define ADJUST_VAR_FLOAT(name, val) const float name = val
-
-#define adjust_begin() ()
-#define adjust_update() ()
-#define adjust_end() ()
-
-#else
-/* In debug mode the user can adjust everything */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 /******************************************************************************/
 /* bool for c89 */
@@ -98,6 +83,31 @@ typedef int bool;
 #ifndef FALSE
 #define FALSE 0
 #endif
+/******************************************************************************/
+
+#ifdef MODE_PRODUCTION
+/* In production mode, compile everything away */
+#define ADJUST_VAR_FLOAT(name, val) float name = val
+#define ADJUST_CONST_FLOAT(name, val) const float name = val
+
+#define ADJUST_VAR_INT(name, val) int name = val
+#define ADJUST_CONST_INT(name, val) const int name = val
+
+#define ADJUST_VAR_BOOL(name, val) bool name = val
+#define ADJUST_CONST_BOOL(name, val) const bool name = val
+
+#define ADJUST_VAR_STRING(name, val) char *name = val
+#define ADJUST_CONST_STRING(name, val) const char *name = val
+
+#define adjust_init() ()
+#define adjust_update() ()
+#define adjust_cleanup() ()
+
+#else
+/* In debug mode the user can adjust everything */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /******************************************************************************/
 /* Generic Dynamic Array, not built for outside use */
@@ -154,14 +164,6 @@ static void ___da_ensure_capacity(void **da, size_t capacity_increase,
     }
 }
 
-#define _a_da_append(da, val)                                                  \
-    do                                                                         \
-    {                                                                          \
-        ___da_ensure_capacity((void **)&(da), 1, sizeof(*da));                 \
-        da[((___DA_Header *)(da) - 1)->length] = (val);                        \
-        ((___DA_Header *)(da) - 1)->length++;                                  \
-    } while (0)
-
 static size_t _a_da_length(void *da)
 {
     if (!da)
@@ -197,9 +199,9 @@ static void _a_da_free(void *da)
 typedef enum
 {
     ADJUST_FLOAT = 0,
-    ADJUST_INT,
-    ADJUST_BOOL,
-    ADJUST_STRING
+    /* ADJUST_INT, */
+    /* ADJUST_BOOL, */
+    /* ADJUST_STRING */
 } ADJUST_TYPE;
 
 typedef struct __ADJUST_ENTRY
@@ -217,16 +219,17 @@ typedef struct __ADJUST_FILE
 
 __ADJUST_FILE *__files;
 
-void _adjust_add(void *val, ADJUST_TYPE type, const char *file_name,
+void _adjust_add(void *val, ADJUST_TYPE type, char *file_name,
                  const int line_number)
 {
-    __ADJUST_ENTRY *entries;
+    __ADJUST_ENTRY *adjustables;
     bool found = FALSE;
-    size_t i;
-    size_t length = _a_da_length(__files);
-    for (i = 0; i < length; ++i)
+    size_t file_index, adjustable_index;
+
+    const size_t length = _a_da_length(__files);
+    for (file_index = 0; file_index < length; ++file_index)
     {
-        if (strcmp(file_name, __files[i].file_name) == 0)
+        if (strcmp(file_name, __files[file_index].file_name) == 0)
         {
             found = TRUE;
             break;
@@ -235,20 +238,25 @@ void _adjust_add(void *val, ADJUST_TYPE type, const char *file_name,
 
     if (!found)
     {
-        __ADJUST_FILE new_file;
-        new_file.file_name = (char *)file_name;
-        new_file.adjustables = (__ADJUST_ENTRY *)_a_da_init(__ADJUST_ENTRY, 4);
+        ___da_ensure_capacity((void **)&__files, 1, sizeof(__ADJUST_FILE));
+        __files[file_index].file_name = file_name;
+        __files[file_index].adjustables =
+            (__ADJUST_ENTRY *)_a_da_init(__ADJUST_ENTRY, 4);
 
-        _a_da_append(__files, new_file);
+        _a_da_increment_length(__files);
     }
 
-    entries = __files[i].adjustables;
-    ___da_ensure_capacity((void **)&(entries), 1, sizeof(*entries));
-    length = _a_da_length(entries);
-    entries[i].type = type;
-    entries[i].data = val;
-    entries[i].line_number = line_number;
-    _a_da_increment_length(entries);
+    adjustable_index = _a_da_length(__files[file_index].adjustables);
+    ___da_ensure_capacity((void **)&(__files[file_index].adjustables), 1,
+                          sizeof(*__files[file_index].adjustables));
+
+    adjustables = __files[file_index].adjustables;
+
+    adjustables[adjustable_index].type = type;
+    adjustables[adjustable_index].data = val;
+    adjustables[adjustable_index].line_number = line_number;
+
+    _a_da_increment_length(__files[file_index].adjustables);
 }
 
 #define ADJUST_VAR_FLOAT(name, val)                                            \
@@ -259,27 +267,32 @@ void _adjust_add(void *val, ADJUST_TYPE type, const char *file_name,
     float name = val;                                                          \
     _adjust_add(&name, ADJUST_FLOAT, __FILE__, __LINE__)
 
-static void adjust_begin(void)
+/**** TODO: Adjust doens't work for these types yet ****/
+#define ADJUST_VAR_INT(name, val) int name = val
+#define ADJUST_CONST_INT(name, val) const int name = val
+
+#define ADJUST_VAR_BOOL(name, val) bool name = val
+#define ADJUST_CONST_BOOL(name, val) const bool name = val
+
+#define ADJUST_VAR_STRING(name, val) char *name = val
+#define ADJUST_CONST_STRING(name, val) const char *name = val
+/*******************************************************/
+
+static void adjust_init(void)
 {
     const size_t capacity = 4;
-    size_t i;
     __files = (__ADJUST_FILE *)_a_da_init(__ADJUST_FILE, capacity);
-
-    for (i = 0; i < capacity; ++i)
-    {
-        __files[i].adjustables =
-            (__ADJUST_ENTRY *)_a_da_init(__ADJUST_ENTRY, capacity);
-    }
 }
 
 static void adjust_update(void)
 {
-    size_t file_index, data_index, data_length;
     __ADJUST_FILE af;
+    __ADJUST_ENTRY e;
+    size_t file_index, data_index, data_length;
     FILE *file;
     char *adjust_pos;
     char buffer[256];
-    int current_line;
+    size_t current_line;
 
     const size_t length = _a_da_length(__files);
     for (file_index = 0; file_index < length; ++file_index)
@@ -294,54 +307,49 @@ static void adjust_update(void)
         }
 
         data_length = _a_da_length(af.adjustables);
+        current_line = 0;
         for (data_index = 0; data_index < data_length; ++data_index)
         {
-            current_line = 1;
-            while (current_line < af.adjustables[data_index].line_number &&
-                   fgets(buffer, sizeof(buffer), file))
+            e = af.adjustables[data_index];
+            while (current_line < e.line_number)
             {
+                if (fgets(buffer, sizeof(buffer), file) == NULL)
+                {
+                    fprintf(stderr, "Error: EOF before line %lu in %s\n",
+                            e.line_number, af.file_name);
+                    fclose(file);
+                    exit(1);
+                }
+
                 ++current_line;
             }
 
-            if (fgets(buffer, sizeof(buffer), file))
+            adjust_pos = strstr(buffer, ");");
+            if (adjust_pos == NULL)
             {
-                adjust_pos = strstr(buffer, ");");
-                if (adjust_pos == NULL)
-                {
-                    fprintf(stderr,
-                            "Error, unable to find valid end of line `);`: "
-                            "%s:%lu\n",
-                            af.file_name,
-                            af.adjustables[data_index].line_number);
-                    fclose(file);
-                    exit(1);
-                }
-
-                // TODO: error handling to prevent infinite loop via bad editing
-                // from developer
-                while (*adjust_pos != ' ')
-                {
-                    --adjust_pos;
-                }
-
-                ++adjust_pos;
-                // TODO: use the type of the adjustable to decide how to scan
-                // it. I think something speciall will have to be done for bool
-                // since we are looking for true or false, else we error out.
-                if (sscanf(adjust_pos, "%f",
-                           (float *)af.adjustables[data_index].data) != 1)
-                {
-                    fprintf(stderr, "Error, failed to parse float: %s:%lu\n",
-                            af.file_name,
-                            af.adjustables[data_index].line_number);
-                    fclose(file);
-                    exit(1);
-                }
+                fprintf(stderr,
+                        "Error: unable to find valid end of line `);`: "
+                        "%s:%lu\n",
+                        af.file_name, e.line_number);
+                fclose(file);
+                exit(1);
             }
-            else
+
+            // TODO: error handling to prevent infinite loop via bad editing
+            // from developer
+            while (*adjust_pos != ' ')
             {
-                printf("Error getting tweak value: %s:%lu\n", af.file_name,
-                       af.adjustables[data_index].line_number);
+                --adjust_pos;
+            }
+
+            ++adjust_pos;
+            // TODO: use the type of the adjustable to decide how to scan
+            // it. I think something speciall will have to be done for bool
+            // since we are looking for true or false, else we error out.
+            if (sscanf(adjust_pos, "%f", (float *)e.data) != 1)
+            {
+                fprintf(stderr, "Error, failed to parse float: %s:%lu\n",
+                        af.file_name, e.line_number);
                 fclose(file);
                 exit(1);
             }
@@ -351,8 +359,15 @@ static void adjust_update(void)
     }
 }
 
-static void adjust_end()
+static void adjust_cleanup()
 {
+    size_t i;
+    const size_t length = _a_da_length(__files);
+    for (i = 0; i < length; ++i)
+    {
+        _a_da_free(__files[i].adjustables);
+    }
+
     _a_da_free(__files);
 }
 #endif
