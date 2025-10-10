@@ -72,8 +72,8 @@ SOFTWARE.
 
 #ifdef MODE_PRODUCTION
 /* In production mode, compile everything away */
-#define ADJUST_VAR(T, name, val) T name = val
-#define ADJUST_CONST(T, name, val) const T name = val
+#define ADJUST_VAR_FLOAT(name, val) float name = val
+#define ADJUST_VAR_FLOAT(name, val) const float name = val
 
 #define adjust_begin() ()
 #define adjust_update() ()
@@ -85,9 +85,17 @@ SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 
+/******************************************************************************/
+/* bool for c89 */
 #ifndef bool
 typedef int bool;
+#endif
+
+#ifndef TRUE
 #define TRUE 1
+#endif
+
+#ifndef FALSE
 #define FALSE 0
 #endif
 
@@ -161,6 +169,14 @@ static size_t _a_da_length(void *da)
     return ((___DA_Header *)da - 1)->length;
 }
 
+static void _a_da_increment_length(void *da)
+{
+    if (da)
+    {
+        ((___DA_Header *)(da)-1)->length++;
+    }
+}
+
 static size_t _a_da_capacity(void *da)
 {
     if (!da)
@@ -180,15 +196,15 @@ static void _a_da_free(void *da)
 /* Adjust */
 typedef enum
 {
-    __ADJUST_FLOAT = 0,
-    __ADJUST_INT,
-    __ADJUST_BOOL,
-    __ADJUST_STRING
-} __ADJUST_TYPE;
+    ADJUST_FLOAT = 0,
+    ADJUST_INT,
+    ADJUST_BOOL,
+    ADJUST_STRING
+} ADJUST_TYPE;
 
 typedef struct __ADJUST_ENTRY
 {
-    __ADJUST_TYPE type;
+    ADJUST_TYPE type;
     size_t line_number;
     void *data;
 } __ADJUST_ENTRY;
@@ -197,21 +213,20 @@ typedef struct __ADJUST_FILE
 {
     char *file_name;
     __ADJUST_ENTRY *adjustables;
-    // size_t *line_numbers;
-    // __ADJUST_TYPE* types;
-    // void **data;
 } __ADJUST_FILE;
 
-__ADJUST_FILE *__a_floats;
+__ADJUST_FILE *__files;
 
-void _adjust_add_float(float *val, const char *file_name, const int line_number)
+void _adjust_add(void *val, ADJUST_TYPE type, const char *file_name,
+                 const int line_number)
 {
+    __ADJUST_ENTRY *entries;
     bool found = FALSE;
     size_t i;
-    const size_t length = _a_da_length(__a_floats);
+    size_t length = _a_da_length(__files);
     for (i = 0; i < length; ++i)
     {
-        if (strcmp(file_name, __a_floats[i].file_name) == 0)
+        if (strcmp(file_name, __files[i].file_name) == 0)
         {
             found = TRUE;
             break;
@@ -222,29 +237,39 @@ void _adjust_add_float(float *val, const char *file_name, const int line_number)
     {
         __ADJUST_FILE new_file;
         new_file.file_name = (char *)file_name;
-        new_file.line_numbers = (size_t *)_a_da_init(size_t, 4);
-        new_file.data = (float **)_a_da_init(float *, 4);
+        new_file.adjustables = (__ADJUST_ENTRY *)_a_da_init(__ADJUST_ENTRY, 4);
 
-        _a_da_append(__a_floats, new_file);
+        _a_da_append(__files, new_file);
     }
 
-    _a_da_append(__a_floats[i].line_numbers, line_number);
-    _a_da_append(__a_floats[i].data, val);
+    entries = __files[i].adjustables;
+    ___da_ensure_capacity((void **)&(entries), 1, sizeof(*entries));
+    length = _a_da_length(entries);
+    entries[i].type = type;
+    entries[i].data = val;
+    entries[i].line_number = line_number;
+    _a_da_increment_length(entries);
 }
 
-#define ADJUST_VAR(T, name, val)                                               \
-    T name = val;                                                              \
-    _adjust_add(&name, __FILE__, __LINE__)
+#define ADJUST_VAR_FLOAT(name, val)                                            \
+    float name = val;                                                          \
+    _adjust_add(&name, ADJUST_FLOAT, __FILE__, __LINE__)
 
-#define ADJUST_CONST(T, name, val)                                             \
-    T name = val;                                                              \
-    _adjust_add(&name, __FILE__, __LINE__)
+#define ADJUST_CONST_FLOAT(name, val)                                          \
+    float name = val;                                                          \
+    _adjust_add(&name, ADJUST_FLOAT, __FILE__, __LINE__)
 
 static void adjust_begin(void)
 {
-    __a_floats = _a_da_init(__ADJUST_FILE, 2);
-    __a_floats->line_numbers = _a_da_init(size_t, 8);
-    __a_floats->data = _a_da_init(float, 8);
+    const size_t capacity = 4;
+    size_t i;
+    __files = (__ADJUST_FILE *)_a_da_init(__ADJUST_FILE, capacity);
+
+    for (i = 0; i < capacity; ++i)
+    {
+        __files[i].adjustables =
+            (__ADJUST_ENTRY *)_a_da_init(__ADJUST_ENTRY, capacity);
+    }
 }
 
 static void adjust_update(void)
@@ -256,10 +281,10 @@ static void adjust_update(void)
     char buffer[256];
     int current_line;
 
-    const size_t length = _a_da_length(__a_floats);
+    const size_t length = _a_da_length(__files);
     for (file_index = 0; file_index < length; ++file_index)
     {
-        af = __a_floats[file_index];
+        af = __files[file_index];
 
         file = fopen(af.file_name, "r");
         if (file == NULL)
@@ -268,11 +293,11 @@ static void adjust_update(void)
             exit(1);
         }
 
-        data_length = _a_da_length(af.line_numbers);
+        data_length = _a_da_length(af.adjustables);
         for (data_index = 0; data_index < data_length; ++data_index)
         {
             current_line = 1;
-            while (current_line < af.line_numbers[data_index] &&
+            while (current_line < af.adjustables[data_index].line_number &&
                    fgets(buffer, sizeof(buffer), file))
             {
                 ++current_line;
@@ -286,7 +311,8 @@ static void adjust_update(void)
                     fprintf(stderr,
                             "Error, unable to find valid end of line `);`: "
                             "%s:%lu\n",
-                            af.file_name, af.line_numbers[data_index]);
+                            af.file_name,
+                            af.adjustables[data_index].line_number);
                     fclose(file);
                     exit(1);
                 }
@@ -302,10 +328,12 @@ static void adjust_update(void)
                 // TODO: use the type of the adjustable to decide how to scan
                 // it. I think something speciall will have to be done for bool
                 // since we are looking for true or false, else we error out.
-                if (sscanf(adjust_pos, "%f", af.data[data_index]) != 1)
+                if (sscanf(adjust_pos, "%f",
+                           (float *)af.adjustables[data_index].data) != 1)
                 {
                     fprintf(stderr, "Error, failed to parse float: %s:%lu\n",
-                            af.file_name, af.line_numbers[data_index]);
+                            af.file_name,
+                            af.adjustables[data_index].line_number);
                     fclose(file);
                     exit(1);
                 }
@@ -313,7 +341,7 @@ static void adjust_update(void)
             else
             {
                 printf("Error getting tweak value: %s:%lu\n", af.file_name,
-                       af.line_numbers[data_index]);
+                       af.adjustables[data_index].line_number);
                 fclose(file);
                 exit(1);
             }
@@ -325,7 +353,7 @@ static void adjust_update(void)
 
 static void adjust_end()
 {
-    _a_da_free(__a_floats);
+    _a_da_free(__files);
 }
 #endif
 
