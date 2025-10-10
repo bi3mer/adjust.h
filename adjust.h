@@ -65,13 +65,15 @@ SOFTWARE.
  * - [ ] Support int
  *
  * Ideal:
+ * - [ ] store file modification times, and only re-read when necessary
  * - [ ] threaded option, one thread per file. Will need to be lightweight,
  *       though
  ******************************************************************************/
 
 #ifdef MODE_PRODUCTION
 /* In production mode, compile everything away */
-#define ADJUST_FLOAT(name, val) const float name = val
+#define ADJUST_VAR(T, name, val) T name = val
+#define ADJUST_CONST(T, name, val) const T name = val
 
 #define adjust_begin() ()
 #define adjust_update() ()
@@ -83,9 +85,11 @@ SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef bool
 typedef int bool;
 #define TRUE 1
 #define FALSE 0
+#endif
 
 /******************************************************************************/
 /* Generic Dynamic Array, not built for outside use */
@@ -174,11 +178,28 @@ static void _a_da_free(void *da)
 
 /******************************************************************************/
 /* Adjust */
+typedef enum
+{
+    __ADJUST_FLOAT = 0,
+    __ADJUST_INT,
+    __ADJUST_BOOL,
+    __ADJUST_STRING
+} __ADJUST_TYPE;
+
+typedef struct __ADJUST_ENTRY
+{
+    __ADJUST_TYPE type;
+    size_t line_number;
+    void *data;
+} __ADJUST_ENTRY;
+
 typedef struct __ADJUST_FILE
 {
     char *file_name;
-    size_t *line_numbers;
-    float **data;
+    __ADJUST_ENTRY *adjustables;
+    // size_t *line_numbers;
+    // __ADJUST_TYPE* types;
+    // void **data;
 } __ADJUST_FILE;
 
 __ADJUST_FILE *__a_floats;
@@ -211,9 +232,13 @@ void _adjust_add_float(float *val, const char *file_name, const int line_number)
     _a_da_append(__a_floats[i].data, val);
 }
 
-#define ADJUST_FLOAT(name, val)                                                \
-    float name = val;                                                          \
-    _adjust_add_float(&name, __FILE__, __LINE__)
+#define ADJUST_VAR(T, name, val)                                               \
+    T name = val;                                                              \
+    _adjust_add(&name, __FILE__, __LINE__)
+
+#define ADJUST_CONST(T, name, val)                                             \
+    T name = val;                                                              \
+    _adjust_add(&name, __FILE__, __LINE__)
 
 static void adjust_begin(void)
 {
@@ -274,6 +299,9 @@ static void adjust_update(void)
                 }
 
                 ++adjust_pos;
+                // TODO: use the type of the adjustable to decide how to scan
+                // it. I think something speciall will have to be done for bool
+                // since we are looking for true or false, else we error out.
                 if (sscanf(adjust_pos, "%f", af.data[data_index]) != 1)
                 {
                     fprintf(stderr, "Error, failed to parse float: %s:%lu\n",
