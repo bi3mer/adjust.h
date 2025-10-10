@@ -74,7 +74,6 @@ SOFTWARE.
 /* bool for c89 */
 #ifndef bool
 typedef int bool;
-#endif
 
 #ifndef TRUE
 #define TRUE 1
@@ -83,6 +82,17 @@ typedef int bool;
 #ifndef FALSE
 #define FALSE 0
 #endif
+#else
+
+#ifndef TRUE
+#define TRUE true
+#endif
+
+#ifndef FALSE
+#define FALSE false
+#endif
+#endif
+
 /******************************************************************************/
 
 #ifdef MODE_PRODUCTION
@@ -111,22 +121,24 @@ typedef int bool;
 
 /******************************************************************************/
 /* Generic Dynamic Array, not built for outside use */
-typedef struct ___DA_Header
+typedef struct _DA_Header
 {
     size_t length;
     size_t capacity;
-} ___DA_Header;
+    size_t item_size;
+} _DA_Header;
 
-static void *___da_init(const size_t item_size, const size_t capacity)
+static void *_da_init(const size_t item_size, const size_t capacity)
 {
     void *ptr = 0;
-    ___DA_Header *h =
-        (___DA_Header *)malloc(item_size * capacity + sizeof(___DA_Header));
+    _DA_Header *h =
+        (_DA_Header *)malloc(item_size * capacity + sizeof(_DA_Header));
 
     if (h)
     {
-        h->capacity = capacity;
         h->length = 0;
+        h->capacity = capacity;
+        h->item_size = item_size;
         ptr = h + 1;
     }
     else
@@ -137,12 +149,10 @@ static void *___da_init(const size_t item_size, const size_t capacity)
 
     return ptr;
 }
-#define _a_da_init(T, capacity) ___da_init(sizeof(T), capacity)
 
-static void ___da_ensure_capacity(void **da, size_t capacity_increase,
-                                  size_t item_size)
+static void _da_ensure_capacity(void **da, size_t capacity_increase)
 {
-    ___DA_Header *h = ((___DA_Header *)(*da) - 1);
+    _DA_Header *h = ((_DA_Header *)(*da) - 1);
     if (h->length + capacity_increase > h->capacity)
     {
         size_t new_capacity = h->capacity * 2;
@@ -151,8 +161,9 @@ static void ___da_ensure_capacity(void **da, size_t capacity_increase,
             new_capacity *= 2;
         }
 
-        const size_t new_size = item_size * new_capacity + sizeof(___DA_Header);
-        h = (___DA_Header *)realloc(h, new_size);
+        const size_t new_size =
+            h->item_size * new_capacity + sizeof(_DA_Header);
+        h = (_DA_Header *)realloc(h, new_size);
         if (!h)
         {
             fprintf(stderr, "Unable to resize dynamic array with realloc.\n");
@@ -164,33 +175,33 @@ static void ___da_ensure_capacity(void **da, size_t capacity_increase,
     }
 }
 
-static size_t _a_da_length(void *da)
+static size_t _da_length(void *da)
 {
     if (!da)
         return 0;
-    return ((___DA_Header *)da - 1)->length;
+    return ((_DA_Header *)da - 1)->length;
 }
 
-static void _a_da_increment_length(void *da)
+static void _da_increment_length(void *da)
 {
     if (da)
     {
-        ((___DA_Header *)(da)-1)->length++;
+        ((_DA_Header *)(da)-1)->length++;
     }
 }
 
-static size_t _a_da_capacity(void *da)
+static size_t _da_capacity(void *da)
 {
     if (!da)
         return 0;
-    return ((___DA_Header *)da - 1)->capacity;
+    return ((_DA_Header *)da - 1)->capacity;
 }
 
-static void _a_da_free(void *da)
+static void _da_free(void *da)
 {
     if (da)
     {
-        free(((___DA_Header *)(da)-1));
+        free(((_DA_Header *)(da)-1));
     }
 }
 
@@ -198,38 +209,38 @@ static void _a_da_free(void *da)
 /* Adjust */
 typedef enum
 {
-    ADJUST_FLOAT = 0,
-    /* ADJUST_INT, */
-    /* ADJUST_BOOL, */
-    /* ADJUST_STRING */
-} ADJUST_TYPE;
+    _ADJUST_FLOAT = 0,
+    /* _ADJUST_INT, */
+    /* _ADJUST_BOOL, */
+    /* _ADJUST_STRING */
+} _ADJUST_TYPE;
 
-typedef struct __ADJUST_ENTRY
+typedef struct _ADJUST_ENTRY
 {
-    ADJUST_TYPE type;
+    _ADJUST_TYPE type;
     size_t line_number;
     void *data;
-} __ADJUST_ENTRY;
+} _ADJUST_ENTRY;
 
-typedef struct __ADJUST_FILE
+typedef struct _ADJUST_FILE
 {
     char *file_name;
-    __ADJUST_ENTRY *adjustables;
-} __ADJUST_FILE;
+    _ADJUST_ENTRY *adjustables;
+} _ADJUST_FILE;
 
-__ADJUST_FILE *__files;
+_ADJUST_FILE *_files;
 
-void _adjust_add(void *val, ADJUST_TYPE type, char *file_name,
+void _adjust_add(void *val, _ADJUST_TYPE type, char *file_name,
                  const int line_number)
 {
-    __ADJUST_ENTRY *adjustables;
+    _ADJUST_ENTRY *adjustables;
     bool found = FALSE;
     size_t file_index, adjustable_index;
 
-    const size_t length = _a_da_length(__files);
+    const size_t length = _da_length(_files);
     for (file_index = 0; file_index < length; ++file_index)
     {
-        if (strcmp(file_name, __files[file_index].file_name) == 0)
+        if (strcmp(file_name, _files[file_index].file_name) == 0)
         {
             found = TRUE;
             break;
@@ -238,34 +249,33 @@ void _adjust_add(void *val, ADJUST_TYPE type, char *file_name,
 
     if (!found)
     {
-        ___da_ensure_capacity((void **)&__files, 1, sizeof(__ADJUST_FILE));
-        __files[file_index].file_name = file_name;
-        __files[file_index].adjustables =
-            (__ADJUST_ENTRY *)_a_da_init(__ADJUST_ENTRY, 4);
+        _da_ensure_capacity((void **)&_files, 1);
+        _files[file_index].file_name = file_name;
+        _files[file_index].adjustables =
+            (_ADJUST_ENTRY *)_da_init(sizeof(_ADJUST_ENTRY), 4);
 
-        _a_da_increment_length(__files);
+        _da_increment_length(_files);
     }
 
-    adjustable_index = _a_da_length(__files[file_index].adjustables);
-    ___da_ensure_capacity((void **)&(__files[file_index].adjustables), 1,
-                          sizeof(*__files[file_index].adjustables));
+    adjustable_index = _da_length(_files[file_index].adjustables);
+    _da_ensure_capacity((void **)&(_files[file_index].adjustables), 1);
 
-    adjustables = __files[file_index].adjustables;
+    adjustables = _files[file_index].adjustables;
 
     adjustables[adjustable_index].type = type;
     adjustables[adjustable_index].data = val;
     adjustables[adjustable_index].line_number = line_number;
 
-    _a_da_increment_length(__files[file_index].adjustables);
+    _da_increment_length(_files[file_index].adjustables);
 }
 
 #define ADJUST_VAR_FLOAT(name, val)                                            \
     float name = val;                                                          \
-    _adjust_add(&name, ADJUST_FLOAT, __FILE__, __LINE__)
+    _adjust_add(&name, _ADJUST_FLOAT, __FILE__, __LINE__)
 
 #define ADJUST_CONST_FLOAT(name, val)                                          \
     float name = val;                                                          \
-    _adjust_add(&name, ADJUST_FLOAT, __FILE__, __LINE__)
+    _adjust_add(&name, _ADJUST_FLOAT, __FILE__, __LINE__)
 
 /**** TODO: Adjust doens't work for these types yet ****/
 #define ADJUST_VAR_INT(name, val) int name = val
@@ -278,26 +288,26 @@ void _adjust_add(void *val, ADJUST_TYPE type, char *file_name,
 #define ADJUST_CONST_STRING(name, val) const char *name = val
 /*******************************************************/
 
-static void adjust_init(void)
+void adjust_init(void)
 {
     const size_t capacity = 4;
-    __files = (__ADJUST_FILE *)_a_da_init(__ADJUST_FILE, capacity);
+    _files = (_ADJUST_FILE *)_da_init(sizeof(_ADJUST_FILE), capacity);
 }
 
-static void adjust_update(void)
+void adjust_update(void)
 {
-    __ADJUST_FILE af;
-    __ADJUST_ENTRY e;
+    _ADJUST_FILE af;
+    _ADJUST_ENTRY e;
     size_t file_index, data_index, data_length;
     FILE *file;
     char *adjust_pos;
     char buffer[256];
     size_t current_line;
 
-    const size_t length = _a_da_length(__files);
+    const size_t length = _da_length(_files);
     for (file_index = 0; file_index < length; ++file_index)
     {
-        af = __files[file_index];
+        af = _files[file_index];
 
         file = fopen(af.file_name, "r");
         if (file == NULL)
@@ -306,7 +316,7 @@ static void adjust_update(void)
             exit(1);
         }
 
-        data_length = _a_da_length(af.adjustables);
+        data_length = _da_length(af.adjustables);
         current_line = 0;
         for (data_index = 0; data_index < data_length; ++data_index)
         {
@@ -359,16 +369,16 @@ static void adjust_update(void)
     }
 }
 
-static void adjust_cleanup()
+void adjust_cleanup()
 {
     size_t i;
-    const size_t length = _a_da_length(__files);
+    const size_t length = _da_length(_files);
     for (i = 0; i < length; ++i)
     {
-        _a_da_free(__files[i].adjustables);
+        _da_free(_files[i].adjustables);
     }
 
-    _a_da_free(__files);
+    _da_free(_files);
 }
 #endif
 
