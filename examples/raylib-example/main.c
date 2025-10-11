@@ -48,7 +48,7 @@ int main(void)
     int framesCounter = 0;
 
     // m
-    ADJUST_CONST_STRING(space_string, "PRESS SPACE to PAUSE BALL MOVEMENT");
+    ADJUST_CONST_STRING(spaceString, "PRESS SPACE to PAUSE BALL MOVEMENT");
 
     SetTargetFPS(60); // Set our game to run at 60 frames-per-second
     //----------------------------------------------------------
@@ -91,7 +91,7 @@ int main(void)
         ClearBackground(RAYWHITE);
 
         DrawCircleV(ballPosition, (float)ballRadius, MAROON);
-        DrawText(space_string, 10, GetScreenHeight() - 25, 20, LIGHTGRAY); // m
+        DrawText(spaceString, 10, GetScreenHeight() - 25, 20, LIGHTGRAY); // m
 
         if (useGravity)
             DrawText("GRAVITY: ON (Press G to disable)", 10,
