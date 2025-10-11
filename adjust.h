@@ -529,7 +529,7 @@ static void adjust_update(void)
 
             case _ADJUST_STRING:
             {
-                char *quote_start, *quote_end, *new_string;
+                char *quote_start, *quote_end, *new_string, *dst;
                 size_t string_length;
 
                 quote_start = strchr(value_start, '"');
@@ -542,47 +542,107 @@ static void adjust_update(void)
                     fclose(file);
                     exit(1);
                 }
-
-                /* Potential bug: "" */
-                /* Bug: "colan \"bug\" biemer" */
                 ++quote_start;
-                quote_end = strchr(quote_start, '"');
-                if (!quote_end)
+
+                quote_end = quote_start;
+                while (*quote_end)
                 {
-                    fprintf(stderr,
-                            "Error: failed to find ending quotation (\"): "
-                            "%s:%lu\n",
-                            af.file_name, e.line_number);
+                    if (*quote_end == '\\' && *(quote_end + 1))
+                    {
+                        quote_end += 2;
+                    }
+                    else if (*quote_end == '"')
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        quote_end++;
+                    }
+                }
+
+                if (*quote_end != '"')
+                {
+                    fprintf(
+                        stderr,
+                        "Error: failed to find ending quotation (\"): %s:%lu\n",
+                        af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
                 }
 
                 string_length = (size_t)(quote_end - quote_start);
-                new_string = realloc(*(char **)e.data,
-                                     sizeof(char) * (string_length + 1));
+                new_string = realloc(*(char **)e.data, string_length + 1);
                 if (!new_string)
                 {
-                    fprintf(stderr,
-                            "Error: failed to reallocate string memory for: "
-                            "%s:%lu\n",
-                            af.file_name, e.line_number);
+                    fprintf(
+                        stderr,
+                        "Error: failed to reallocate string memory: %s:%lu\n",
+                        af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
                 }
 
-                memcpy(new_string, quote_start, string_length);
-                new_string[string_length] = '\0';
+                dst = new_string;
+                while (quote_start < quote_end)
+                {
+                    if (*quote_start == '\\' && (quote_start + 1) < quote_end)
+                    {
+                        quote_start++; // Skip backslash
+                        switch (*quote_start)
+                        {
+                        case 'n':
+                            *dst = '\n';
+                            ++dst;
+                            break;
+                        case 't':
+                            *dst = '\t';
+                            ++dst;
+                            break;
+                        case 'r':
+                            *dst = '\r';
+                            ++dst;
+                            break;
+                        case '\\':
+                            *dst = '\\';
+                            ++dst;
+                            break;
+                        case '"':
+                            *dst = '"';
+                            ++dst;
+                            break;
+                        case '\'':
+                            *dst = '\'';
+                            ++dst;
+                            break;
+                        default:
+                            *dst = '\\';
+                            ++dst;
+
+                            *dst = *quote_start;
+                            ++dst;
+                            break;
+                        }
+                        quote_start++;
+                    }
+                    else
+                    {
+                        *dst = *quote_start;
+                        ++dst;
+                        ++quote_start;
+                    }
+                }
+
+                *dst = '\0';
 
                 *(char **)e.data = new_string;
                 break;
             }
 
             default:
-            {
                 fprintf(stderr, "Error: unhandled adjust type: %u\n", e.type);
                 fclose(file);
                 exit(1);
-            }
             }
         }
 
