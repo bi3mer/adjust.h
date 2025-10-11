@@ -20,3 +20,6 @@ CMakeUserPresets.json
 
 a.out
 *.dSYM
+.cache
+bouncing-ball
+build

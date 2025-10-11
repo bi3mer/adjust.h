@@ -30,23 +30,25 @@ int main(void)
 {
     // Initialization
     //---------------------------------------------------------
-    adjust_begin(); // m
+    adjust_init(); // m
     const int screenWidth = 800;
     const int screenHeight = 450;
 
-    ADJUST_CONST_STRING(title, "raylib [shapes] example - bouncing ball"); // m
-
     SetConfigFlags(FLAG_MSAA_4X_HINT);
-    InitWindow(screenWidth, screenHeight, title);
+    InitWindow(screenWidth, screenHeight,
+               "raylib [shapes] example - bouncing ball");
 
     Vector2 ballPosition = {GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f};
     Vector2 ballSpeed = {5.0f, 4.0f};
-    ADJUST_CONST_INT(ballRadius, 20);  // m
-    ADJUST_CONST_FLOAT(gravity, 0.2f); // m
+    ADJUST_CONST_INT(ballRadius, 10); // m
+    ADJUST_CONST_FLOAT(gravity, .2f); // m
 
     bool useGravity = true;
     bool pause = 0;
     int framesCounter = 0;
+
+    // m
+    ADJUST_CONST_STRING(space_string, "PRESS SPACE to PAUSE BALL MOVEMENT");
 
     SetTargetFPS(60); // Set our game to run at 60 frames-per-second
     //----------------------------------------------------------
@@ -54,6 +56,7 @@ int main(void)
     // Main game loop
     while (!WindowShouldClose()) // Detect window close button or ESC key
     {
+        adjust_update(); // m
         // Update
         //-----------------------------------------------------
         if (IsKeyPressed(KEY_G))
@@ -88,8 +91,7 @@ int main(void)
         ClearBackground(RAYWHITE);
 
         DrawCircleV(ballPosition, (float)ballRadius, MAROON);
-        DrawText("PRESS SPACE to PAUSE BALL MOVEMENT", 10,
-                 GetScreenHeight() - 25, 20, LIGHTGRAY);
+        DrawText(space_string, 10, GetScreenHeight() - 25, 20, LIGHTGRAY); // m
 
         if (useGravity)
             DrawText("GRAVITY: ON (Press G to disable)", 10,
@@ -110,8 +112,8 @@ int main(void)
 
     // De-Initialization
     //---------------------------------------------------------
-    CloseWindow();  // Close window and OpenGL context
-    adjust_close(); // m
+    CloseWindow();    // Close window and OpenGL context
+    adjust_cleanup(); // m
     //----------------------------------------------------------
 
     return 0;

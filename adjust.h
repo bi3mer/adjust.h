@@ -69,7 +69,7 @@ SOFTWARE.
  * - [ ] Bug: global variables may be added before or after other variables, so
  *       I need to support a sorted insert based on the line number for the
  *       dynamic array
- * - [ ] Example: Raylib bouncing ball
+ * - [X] Example: Raylib bouncing ball
  * - [ ] Example: working make file for non-raylib version
  * - [ ] Example: add char type to examples/types.c
  * - [ ] Example: global example
@@ -195,12 +195,12 @@ static void _da_ensure_capacity(void **da, const size_t capacity_increase)
     }
 }
 
-inline size_t _da_length(const void *da)
+static inline size_t _da_length(const void *da)
 {
     return da ? ((const _DA_Header *)da - 1)->length : 0;
 }
 
-inline void _da_increment_length(void *da)
+static inline void _da_increment_length(void *da)
 {
     if (da)
     {
@@ -208,7 +208,7 @@ inline void _da_increment_length(void *da)
     }
 }
 
-inline void _da_free(void *da)
+static inline void _da_free(void *da)
 {
     if (da)
     {
