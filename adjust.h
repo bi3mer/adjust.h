@@ -46,32 +46,32 @@ SOFTWARE.
  * compile in production mode (e.g., `cmake -DCMAKE_BUILD_TYPE=Release ..`),
  * then `gravity` and `ball_radius` will be a constant.
  *
- * The idea for this tool is not my own, I first encountered it in a blog post,
- * and there have been several other resources that have influenced how I
- * programmed this tool:
+ * Adjust supports the following types:
  *
- *  - https://blog.voxagon.se/2018/03/13/hot-reloading-hardcoded-parameters.html
- *  - https://www.bytesbeneath.com/p/dynamic-arrays-in-c
- *  - https://github.com/nothings/stb/tree/master
+ * - bool
+ * - char
+ * - char*
+ * - float
+ * - int
+ *
+ * The naming convention for declaration is `ADJUST_[VAR || CONST]_[TYPE]`. The
+ * only exception to the rule is `char*` which uses STRING for `[TYPE]`. [VAR]
+ * will declare a modifiable variable in debug and production mode, where as
+ * [CONST] will declare a modifiable variable in debug a `const` in production
+ * mode. The default is to assume that the compile is not in production mode,
+ * which is `MODE_PRODUCTION` that can be set when you compile. See `examples`
+ * for working examples of compiling in debug.
  *
  * Please feel free to make any contributions via a pull request or to submit
- * an issue if something doesn't work for you. Also, see examples in the
- * repository for example usage.
+ * an issue if something doesn't work for you. Also, see the examples directory
+ * to see how adjust.h can be used.
  *
  * Minimum:
- * - [X] Support float
- * - [X] Support int
- * - [X] Support bool
- * - [X] Support char*
- * - [ ] Support char (how to handle empty char?)
  * - [ ] Test for empty string
  * - [ ] Support global variables
  * - [ ] Bug: global variables may be added before or after other variables, so
  *       I need to support a sorted insert based on the line number for the
  *       dynamic array
- * - [X] Example: Raylib bouncing ball
- * - [ ] Example: working make file for non-raylib version
- * - [ ] Example: add char type to examples/types.c
  * - [ ] Example: global example
  *
  * Ideal:
@@ -81,13 +81,24 @@ SOFTWARE.
  *
  * FAQ:
  *
- *    Why C99?
+ *  --> Did you come up with the idea behind Adjust?
  *
- *    I originally wanted to use C89 for better portability, but the design I
- *    came up with relies on a macro to declare a variable and then call a
- *    function to register said variable with Adjust. To do that, I needed at
- *    least C99. I'm sure that there is another approach that I haven't thought
- *    of, yet.
+ *  No, the idea for this tool is not my own. I first encountered it in a blog
+ *  post, and there have been several other resources that have influenced
+ *  how I programmed this tool:
+ *
+ *  - https://blog.voxagon.se/2018/03/13/hot-reloading-hardcoded-parameters.html
+ *  - https://www.bytesbeneath.com/p/dynamic-arrays-in-c
+ *  - https://github.com/nothings/stb/tree/master
+ *
+ *
+ *  --> Why C99?
+ *
+ * I originally wanted to use C89 for better portability, but the design I
+ * came up with relies on a macro to declare a variable and then call a
+ * function to register said variable with Adjust. To do that, I needed at
+ * least C99. I'm sure that there is another approach that I haven't thought
+ * of, yet.
  ******************************************************************************/
 
 /******************************************************************************/
@@ -125,6 +136,9 @@ typedef int bool;
 
 #define ADJUST_VAR_BOOL(name, val) bool name = val
 #define ADJUST_CONST_BOOL(name, val) const bool name = val
+
+#define ADJUST_VAR_CHAR(name, val) char name = val
+#define ADJUST_CONST_CHAR(name, val) const char name = val
 
 #define ADJUST_VAR_STRING(name, val) char *name = val
 #define ADJUST_CONST_STRING(name, val) const char *name = val
@@ -223,6 +237,7 @@ typedef enum
     _ADJUST_FLOAT = 0,
     _ADJUST_INT,
     _ADJUST_BOOL,
+    _ADJUST_CHAR,
     _ADJUST_STRING
 } _ADJUST_TYPE;
 
@@ -295,6 +310,14 @@ static void adjust_register(void *val, _ADJUST_TYPE type, const char *file_name,
 #define ADJUST_CONST_INT(name, val)                                            \
     int name = val;                                                            \
     adjust_register(&name, _ADJUST_INT, __FILE__, __LINE__)
+
+#define ADJUST_VAR_CHAR(name, val)                                             \
+    char name = val;                                                           \
+    adjust_register(&name, _ADJUST_CHAR, __FILE__, __LINE__)
+
+#define ADJUST_CONST_CHAR(name, val)                                           \
+    char name = val;                                                           \
+    adjust_register(&name, _ADJUST_CHAR, __FILE__, __LINE__)
 
 #define ADJUST_VAR_BOOL(name, val)                                             \
     bool name = val;                                                           \
@@ -442,6 +465,49 @@ static void adjust_update(void)
                     fclose(file);
                     exit(1);
                 }
+                break;
+            }
+
+            case _ADJUST_CHAR:
+            {
+                char *quote_start;
+
+                quote_start = strchr(value_start, '\'');
+                if (!quote_start)
+                {
+                    fprintf(stderr,
+                            "Error: failed to find starting quotation (\'): "
+                            "%s:%lu\n",
+                            af.file_name, e.line_number);
+                    fclose(file);
+                    exit(1);
+                }
+
+                ++quote_start;
+                if (*quote_start == '\'')
+                {
+                    fprintf(stderr,
+                            "Error: char format '' invalid in C, %s:%lu\n",
+                            af.file_name, e.line_number);
+                    fclose(file);
+                    exit(1);
+                }
+
+                if (*quote_start == '\\')
+                {
+                    ++quote_start;
+                }
+
+                if (*(quote_start + 1) != '\'')
+                {
+                    fprintf(stderr,
+                            "Error: missing ending ' for char, %s:%lu\n",
+                            af.file_name, e.line_number);
+                    fclose(file);
+                    exit(1);
+                }
+
+                *(char *)e.data = *quote_start;
                 break;
             }
 
