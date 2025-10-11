@@ -9,6 +9,7 @@ Adjust supports several simple types, and there are example files in this direct
 - [type_float.c](./type_float.c)
 - [type_int.c](./type_int.c)
 - [type_string.c](./type_string.c)
+- [global.c](./global.c) // globals are not yet supported
 
 These can all be built with `make` and cleaned up with `make clean`.
 
