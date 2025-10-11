@@ -24,7 +24,8 @@ SOFTWARE.
 /******************************************************************************
  * Documentation:
  *
- * Adjust let's you adjust values from code while your application is running.
+ * Adjust is a C99 single header library let's you adjust values in your code
+ * while your application is running.
  *
  * The API is meant to be simple:
  *
@@ -64,22 +65,33 @@ SOFTWARE.
  * - [X] Support char*
  * - [ ] Support char (how to handle empty char?)
  * - [ ] Test for empty string
- * - [ ] Current ADJUST_VAR_ and ADJUST_CONST work with a variable declaration
- *       and then a line of code after. This, though, is not c89 compliant...
- *       The easy fix is to go go c99, but I would like to stay in C89.
+ * - [ ] Support global variables
+ * - [ ] Bug: global variables may be added before or after other variables, so
+ *       I need to support a sorted insert based on the line number for the
+ *       dynamic array
+ * - [ ] Example: Raylib bouncing ball
+ * - [ ] Example: working make file for non-raylib version
+ * - [ ] Example: add char type to examples/types.c
+ * - [ ] Example: global example
  *
  * Ideal:
  * - [ ] store file modification times, and only re-read when necessary
  * - [ ] threaded option, one thread per file. Will need to be lightweight,
  *       though
- * - [ ] I want .clang-format to work with a casey-muratori style swtich
- *       statement, but I haven't been able to figure it out
+ *
+ * FAQ:
+ *
+ *    Why C99?
+ *
+ *    I originally wanted to use C89 for better portability, but the design I
+ *    came up with relies on a macro to declare a variable and then call a
+ *    function to register said variable with Adjust. To do that, I needed at
+ *    least C99. I'm sure that there is another approach that I haven't thought
+ *    of, yet.
  ******************************************************************************/
 
 /******************************************************************************/
-/* bool for c89 */
-#include <_string.h>
-#include <malloc/_malloc.h>
+/* bool */
 #ifndef bool
 typedef int bool;
 
@@ -158,7 +170,7 @@ static void *_da_init(const size_t item_size, const size_t capacity)
     return ptr;
 }
 
-static void _da_ensure_capacity(void **da, size_t capacity_increase)
+static void _da_ensure_capacity(void **da, const size_t capacity_increase)
 {
 
     _DA_Header *h = ((_DA_Header *)(*da) - 1);
@@ -183,14 +195,12 @@ static void _da_ensure_capacity(void **da, size_t capacity_increase)
     }
 }
 
-static size_t _da_length(void *da)
+inline size_t _da_length(const void *da)
 {
-    if (!da)
-        return 0;
-    return ((_DA_Header *)da - 1)->length;
+    return da ? ((const _DA_Header *)da - 1)->length : 0;
 }
 
-static void _da_increment_length(void *da)
+inline void _da_increment_length(void *da)
 {
     if (da)
     {
@@ -198,7 +208,7 @@ static void _da_increment_length(void *da)
     }
 }
 
-static void _da_free(void *da)
+inline void _da_free(void *da)
 {
     if (da)
     {
@@ -231,8 +241,8 @@ typedef struct _ADJUST_FILE
 
 _ADJUST_FILE *_files;
 
-static void _adjust_add(void *val, _ADJUST_TYPE type, const char *file_name,
-                        const size_t line_number)
+static void adjust_register(void *val, _ADJUST_TYPE type, const char *file_name,
+                            const size_t line_number)
 {
     _ADJUST_ENTRY *adjustables;
     bool found = FALSE;
@@ -272,27 +282,27 @@ static void _adjust_add(void *val, _ADJUST_TYPE type, const char *file_name,
 
 #define ADJUST_VAR_FLOAT(name, val)                                            \
     float name = val;                                                          \
-    _adjust_add(&name, _ADJUST_FLOAT, __FILE__, __LINE__)
+    adjust_register(&name, _ADJUST_FLOAT, __FILE__, __LINE__)
 
 #define ADJUST_CONST_FLOAT(name, val)                                          \
     float name = val;                                                          \
-    _adjust_add(&name, _ADJUST_FLOAT, __FILE__, __LINE__)
+    adjust_register(&name, _ADJUST_FLOAT, __FILE__, __LINE__)
 
 #define ADJUST_VAR_INT(name, val)                                              \
     int name = val;                                                            \
-    _adjust_add(&name, _ADJUST_INT, __FILE__, __LINE__)
+    adjust_register(&name, _ADJUST_INT, __FILE__, __LINE__)
 
 #define ADJUST_CONST_INT(name, val)                                            \
     int name = val;                                                            \
-    _adjust_add(&name, _ADJUST_INT, __FILE__, __LINE__)
+    adjust_register(&name, _ADJUST_INT, __FILE__, __LINE__)
 
 #define ADJUST_VAR_BOOL(name, val)                                             \
     bool name = val;                                                           \
-    _adjust_add(&name, _ADJUST_BOOL, __FILE__, __LINE__)
+    adjust_register(&name, _ADJUST_BOOL, __FILE__, __LINE__)
 
 #define ADJUST_CONST_BOOL(name, val)                                           \
     bool name = val;                                                           \
-    _adjust_add(&name, _ADJUST_BOOL, __FILE__, __LINE__)
+    adjust_register(&name, _ADJUST_BOOL, __FILE__, __LINE__)
 
 #define ADJUST_VAR_STRING(name, val)                                           \
     char *name = NULL;                                                         \
@@ -302,7 +312,7 @@ static void _adjust_add(void *val, _ADJUST_TYPE type, const char *file_name,
         size_t _len = strlen(_temp) + 1;                                       \
         name = malloc(sizeof(char) * _len);                                    \
         memcpy(name, _temp, _len);                                             \
-        _adjust_add(&name, _ADJUST_STRING, __FILE__, __LINE__);                \
+        adjust_register(&name, _ADJUST_STRING, __FILE__, __LINE__);            \
     } while (0)
 
 #define ADJUST_CONST_STRING(name, val)                                         \
@@ -313,7 +323,7 @@ static void _adjust_add(void *val, _ADJUST_TYPE type, const char *file_name,
         size_t _len = strlen(_temp) + 1;                                       \
         name = malloc(sizeof(char) * _len);                                    \
         memcpy(name, _temp, _len);                                             \
-        _adjust_add(&name, _ADJUST_STRING, __FILE__, __LINE__);                \
+        adjust_register(&name, _ADJUST_STRING, __FILE__, __LINE__);            \
     } while (0)
 
 static void adjust_init(void)
@@ -387,7 +397,7 @@ static void adjust_update(void)
             {
                 if (sscanf(value_start, "%f", (float *)e.data) != 1)
                 {
-                    fprintf(stderr, "Error, failed to parse float: %s:%lu\n",
+                    fprintf(stderr, "Error: failed to parse float: %s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
                     exit(1);

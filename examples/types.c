@@ -1,6 +1,5 @@
 #include "adjust.h"
 
-#include <sys/unistd.h>
 #include <unistd.h>
 
 int main(void)
@@ -8,19 +7,7 @@ int main(void)
     size_t countdown;
     adjust_init();
 
-    ADJUST_CONST_FLOAT(gravity, -9.8f);
-    ADJUST_VAR_FLOAT(a, 1.1f);
-
-    ADJUST_CONST_INT(b, 30);
-    ADJUST_VAR_INT(c, 1);
-
-    ADJUST_CONST_BOOL(d, FALSE);
-    ADJUST_VAR_BOOL(e, TRUE);
-
-    ADJUST_CONST_STRING(f, "Hello,");
-    ADJUST_VAR_STRING(g, "World!");
-
-    for (countdown = 10; countdown > 0; countdown--)
+    for (countdown = 5; countdown > 0; countdown--)
     {
         printf("You have %lu seconds to adjust...\n", countdown);
         sleep(1);

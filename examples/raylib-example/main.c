@@ -5,14 +5,14 @@
  *   Example complexity rating: [★☆☆☆] 1/4
  *
  *   Example originally created with raylib 2.5, last time updated with
- *raylib 2.5
+ *   raylib 2.5
  *
  *   Example contributed by Ramon Santamaria (@raysan5), reviewed by Jopestpe
- *(@jopestpe)
+ *   (@jopestpe)
  *
  *   Example licensed under an unmodified zlib/libpng license, which is an
- *OSI-certified, BSD-like license that allows static linking with closed source
- *software
+ *   OSI-certified, BSD-like license that allows static linking with closed
+ *   source software
  *
  *   Copyright (c) 2013-2025 Ramon Santamaria (@raysan5)
  *   Modified by Colan Biemer as an example of adjusting
@@ -25,22 +25,24 @@
 //------------------------------------------------------------------------------------
 // Program main entry point
 //------------------------------------------------------------------------------------
+// "// m" marks a modification made to the example // m
 int main(void)
 {
     // Initialization
     //---------------------------------------------------------
-    adjust_begin(); /* modification 0 */
+    adjust_begin(); // m
     const int screenWidth = 800;
     const int screenHeight = 450;
 
+    ADJUST_CONST_STRING(title, "raylib [shapes] example - bouncing ball"); // m
+
     SetConfigFlags(FLAG_MSAA_4X_HINT);
-    InitWindow(screenWidth, screenHeight,
-               "raylib [shapes] example - bouncing ball");
+    InitWindow(screenWidth, screenHeight, title);
 
     Vector2 ballPosition = {GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f};
     Vector2 ballSpeed = {5.0f, 4.0f};
-    ADJUST_CONST(int, ballRadius, 20);  /* modification 1 */
-    ADJUST_CONST(float, gravity, 0.2f); /* modification 2 */
+    ADJUST_CONST_INT(ballRadius, 20);  // m
+    ADJUST_CONST_FLOAT(gravity, 0.2f); // m
 
     bool useGravity = true;
     bool pause = 0;
@@ -109,7 +111,7 @@ int main(void)
     // De-Initialization
     //---------------------------------------------------------
     CloseWindow();  // Close window and OpenGL context
-    adjust_close(); /* modificaiton 3 */
+    adjust_close(); // m
     //----------------------------------------------------------
 
     return 0;
