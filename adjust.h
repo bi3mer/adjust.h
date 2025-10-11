@@ -24,8 +24,8 @@ SOFTWARE.
 /******************************************************************************
  * Documentation:
  *
- * Adjust is a C99 single header library let's you adjust values in your code
- * while your application is running.
+ * adjust.h is a C99 single header library that lets you adjust values in your
+ * code while your application is running.
  *
  * The API is meant to be simple:
  *
@@ -62,12 +62,25 @@ SOFTWARE.
  * which is `MODE_PRODUCTION` that can be set when you compile. See `examples`
  * for working examples of compiling in debug.
  *
+ * Note, adjust.h will not work for short-lived variables. Here is an example
+ * that will not work:
+ *
+ * float area(float radius)
+ * {
+ *     ADJUST_CONST_FLOAT(PI, 3.14159265358979323846f);
+ *     return 2 * PI * radius;
+ * }
+ *
+ * Granted, I have no idea why you would want to adjust PI, but this example
+ * will not work because adjust.h relies on setting up pointers which are
+ * stored and then used to modifiy the value when `adjust_update()` is called.
+ *
  * Please feel free to make any contributions via a pull request or to submit
  * an issue if something doesn't work for you. Also, see the examples directory
  * to see how adjust.h can be used.
  *
  * Minimum:
- * - [ ] Test for empty string
+ * - [ ] need smarter string reading to handle inner quotes
  * - [ ] Support global variables
  * - [ ] Bug: global variables may be added before or after other variables, so
  *       I need to support a sorted insert based on the line number for the
@@ -78,10 +91,13 @@ SOFTWARE.
  * - [ ] store file modification times, and only re-read when necessary
  * - [ ] threaded option, one thread per file. Will need to be lightweight,
  *       though
+ * - [ ] I think if you do ADJUST_VAR_FLOAT(a, 2.0f) and then something
+ *       like deregister_short, then everything could work. It means adding
+ *       supporting remove in dynamic arrays. It's a litle obnoxious, though.
  *
  * FAQ:
  *
- *  --> Did you come up with the idea behind Adjust?
+ *  --> Did you come up with the idea behind adjust.h?
  *
  *  No, the idea for this tool is not my own. I first encountered it in a blog
  *  post, and there have been several other resources that have influenced
