@@ -1,13 +1,15 @@
 #include "adjust.h"
 #include <unistd.h>
 
-ADJUST_GLOBAL_CONST_FLOAT(G, 9.8f);
+ADJUST_GLOBAL_CONST_FLOAT(G1, 0.8f);
+ADJUST_GLOBAL_CONST_FLOAT(G2, 2.8f);
 
 int main(void)
 {
     adjust_init();
 
-    adjust_register_global_float(&G); // TODO: temp
+    adjust_register_global_float(G1); // TODO: temp
+    adjust_register_global_float(G2); // TODO: temp
 
     ADJUST_CONST_FLOAT(m1, 2.0f);
     ADJUST_CONST_FLOAT(m2, 2.0f);
@@ -22,9 +24,15 @@ int main(void)
         sleep(1);
     }
 
-    printf("Before: F = %f *%f*%f / %f = %f\n", G, m1, m2, d, G * m1 * m2 / d);
+    printf("Before G1: F = %f *%f*%f / %f = %f\n", G1, m1, m2, d,
+           G1 * m1 * m2 / d);
+    printf("Before G2: F = %f *%f*%f / %f = %f\n", G2, m1, m2, d,
+           G2 * m1 * m2 / d);
     adjust_update();
-    printf("After: F = %f *%f*%f / %f = %f\n", G, m1, m2, d, G * m1 * m2 / d);
+    printf("After G1: F = %f *%f*%f / %f = %f\n", G1, m1, m2, d,
+           G1 * m1 * m2 / d);
+    printf("After G2: F = %f *%f*%f / %f = %f\n", G2, m1, m2, d,
+           G2 * m1 * m2 / d);
 
     adjust_cleanup();
     return 0;

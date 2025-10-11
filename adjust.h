@@ -80,15 +80,13 @@ SOFTWARE.
  * to see how adjust.h can be used.
  *
  * Minimum:
- * - [ ] need special support for global strings
- * - [ ] Bug: global variables may be added before or after other variables, so
- *       I need to support a sorted insert based on the line number for the
- *       dynamic array
- * - [ ] Example: global bool example
  * - [ ] Example: global char example
  * - [ ] Example: global int example
  * - [ ] Example: global char* example
- *
+ * - [ ] Need special support for global strings
+ * - [ ] Bug: global variables may be added before or after other variables, so
+ *       I need to support a sorted insert based on the line number for the
+ *       dynamic array
  *
  * Ideal:
  * - [ ] store file modification times, and only re-read when necessary
@@ -171,11 +169,11 @@ typedef int bool;
 #define ADJUST_GLOBAL_VAR_FLOAT(name, val) float name = val
 #define ADJUST_GLOBAL_VAR_STING(name, val) float name = val
 
-#define adjust_register_global_bool(ref) ()
-#define adjust_register_global_char(ref) ()
-#define adjust_register_global_float(ref) ()
-#define adjust_register_global_int(ref) ()
-#define adjust_register_global_string(ref) ()
+#define adjust_register_global_bool(name) ()
+#define adjust_register_global_char(name) ()
+#define adjust_register_global_float(name) ()
+#define adjust_register_global_int(name) ()
+#define adjust_register_global_string(name) ()
 
 #define adjust_init() ()
 #define adjust_update() ()
@@ -384,10 +382,44 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
     } while (0)
 
 static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
-                                    const char *file_name)
+                                    const char *file_name,
+                                    const char *global_name)
 {
-    // find the line number
-    _adjust_register(ref, type, file_name, 4);
+    FILE *file;
+    char buffer[256];
+    size_t line_number;
+    bool found;
+
+    file = fopen(file_name, "r");
+    if (file == NULL)
+    {
+        fprintf(stderr, "Error: unable to open file: %s\n", file_name);
+        exit(1);
+    }
+
+    found = FALSE;
+    line_number = 0;
+    while (fgets(buffer, sizeof(buffer), file) != NULL)
+    {
+        ++line_number;
+        if (strstr(buffer, global_name) != NULL)
+        {
+            printf("%s found at %lu\n", global_name, line_number);
+            found = TRUE;
+            break;
+        }
+    }
+
+    fclose(file);
+
+    if (!found)
+    {
+        fprintf(stderr, "Error: unable to find global \"%s\" in %s\n",
+                global_name, file_name);
+        exit(1);
+    }
+
+    _adjust_register(ref, type, file_name, line_number);
 }
 
 // #define ADJUST_GLOBAL_CONST_BOOL(name, val) const float name = val;
@@ -402,23 +434,26 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
 // #define ADJUST_GLOBAL_VAR_FLOAT(name, val) float name = val;
 // #define ADJUST_GLOBAL_VAR_STING(name, val) float name = val;
 
+#define ADJUST_GLOBAL_CONST_BOOL(name, val) bool name = val
 #define ADJUST_GLOBAL_CONST_FLOAT(name, val) float name = val
+
+#define ADJUST_GLOBAL_VAR_BOOL(name, val) bool name = val
 #define ADJUST_GLOBAL_VAR_FLOAT(name, val) float name = val
 
-#define adjust_register_global_bool(ref)                                       \
-    _adjust_register_global(ref, _ADJUST_BOOL, __FILE_NAME__)
+#define adjust_register_global_bool(name)                                      \
+    _adjust_register_global(&name, _ADJUST_BOOL, __FILE_NAME__, #name)
 
-#define adjust_register_global_char(ref)                                       \
-    _adjust_register_global(ref, _ADJUST_CHAR, __FILE_NAME__)
+// #define adjust_register_global_char(ref)                                       \
+//     _adjust_register_global(ref, _ADJUST_CHAR, __FILE_NAME__)
 
-#define adjust_register_global_float(ref)                                      \
-    _adjust_register_global(ref, _ADJUST_FLOAT, __FILE_NAME__)
+#define adjust_register_global_float(name)                                     \
+    _adjust_register_global(&name, _ADJUST_FLOAT, __FILE_NAME__, #name)
 
-#define adjust_register_global_int(ref)                                        \
-    _adjust_register_global(ref, _ADJUST_INT, __FILE_NAME__)
+// #define adjust_register_global_int(ref)                                        \
+//     _adjust_register_global(ref, _ADJUST_INT, __FILE_NAME__)
 
-#define adjust_register_global_string(ref)                                     \
-    _adjust_register_global(ref, _ADJUST_STRING, __FILE_NAME__)
+// #define adjust_register_global_string(ref)                                     \
+//     _adjust_register_global(ref, _ADJUST_STRING, __FILE_NAME__)
 
 static void adjust_init(void)
 {
