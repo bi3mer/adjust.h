@@ -80,8 +80,6 @@ SOFTWARE.
  * to see how adjust.h can be used.
  *
  * Minimum:
- * - [ ] Example: global char example
- * - [ ] Example: global int example
  * - [ ] Example: global char* example
  * - [ ] Need special support for global strings
  * - [ ] Bug: global variables may be added before or after other variables, so
@@ -454,18 +452,20 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
 }
 
 #define ADJUST_GLOBAL_CONST_BOOL(name, val) bool name = val
+#define ADJUST_GLOBAL_CONST_CHAR(name, val) char name = val
 #define ADJUST_GLOBAL_CONST_FLOAT(name, val) float name = val
 #define ADJUST_GLOBAL_CONST_INT(name, val) int name = val
 
 #define ADJUST_GLOBAL_VAR_BOOL(name, val) bool name = val
+#define ADJUST_GLOBAL_VAR_CHAR(name, val) char name = val
 #define ADJUST_GLOBAL_VAR_FLOAT(name, val) float name = val
 #define ADJUST_GLOBAL_VAR_INT(name, val) int name = val
 
 #define adjust_register_global_bool(name)                                      \
     _adjust_register_global(&name, _ADJUST_BOOL, __FILE_NAME__, #name)
 
-// #define adjust_register_global_char(ref)                                       \
-//     _adjust_register_global(ref, _ADJUST_CHAR, __FILE_NAME__)
+#define adjust_register_global_char(name)                                      \
+    _adjust_register_global(&name, _ADJUST_CHAR, __FILE_NAME__, #name)
 
 #define adjust_register_global_float(name)                                     \
     _adjust_register_global(&name, _ADJUST_FLOAT, __FILE_NAME__, #name)
