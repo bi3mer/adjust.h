@@ -79,18 +79,11 @@ SOFTWARE.
  * an issue if something doesn't work for you. Also, see the examples directory
  * to see how adjust.h can be used.
  *
- * Minimum:
- * - [ ] Example: global char* example
- * - [ ] Need special support for global strings
- * - [ ] Bug: global variables may be added before or after other variables, so
- *       I need to support a sorted insert based on the line number for the
- *       dynamic array
- *
  * Ideal:
  * - [ ] adjust_register_global_float could maybe use adjust_register_global
  *       typeof, and then fail on unsupported type
- * - [ ] store file modification times, and only re-read when necessary
- * - [ ] threaded option, one thread per file. Will need to be lightweight,
+ * - [ ] Store file modification times, and only re-read when necessary
+ * - [ ] Threaded option, one thread per file. Will need to be lightweight,
  *       though
  * - [ ] I think if you do ADJUST_VAR_FLOAT(a, 2.0f) and then something
  *       like deregister_short, then everything could work. It means adding
@@ -98,12 +91,16 @@ SOFTWARE.
  *
  * Bugs:
  *
- *    1. Double registering should be breaking.
+ *    1. Global variables may be added before or after other variables, so
+ *       I need to support a sorted insert based on the line number for the
+ *       dynamic array, otherwise adjust.h breaks
+
+ *    2. Double registering globals should be breaking.
  *
- *    ```
- *    adjust_register_global_int(g_a);
- *    adjust_register_global_int(g_a);
- *    ```
+ *       ```
+ *       adjust_register_global_int(g_a);
+ *       adjust_register_global_int(g_a);
+ *       ```
  *
  * FAQ:
  *
@@ -120,11 +117,11 @@ SOFTWARE.
  *
  *  --> Why C99?
  *
- * I originally wanted to use C89 for better portability, but the design I
- * came up with relies on a macro to declare a variable and then call a
- * function to register said variable with Adjust. To do that, I needed at
- * least C99. I'm sure that there is another approach that I haven't thought
- * of, yet.
+ *  I originally wanted to use C89 for better portability, but the design I
+ *  came up with relies on a macro to declare a variable and then call a
+ *  function to register said variable with Adjust. To do that, I needed at
+ *  least C99. I'm sure that there is another approach that I haven't thought
+ *  of, yet.
  ******************************************************************************/
 
 /******************************************************************************/
@@ -455,26 +452,35 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
 #define ADJUST_GLOBAL_CONST_CHAR(name, val) char name = val
 #define ADJUST_GLOBAL_CONST_FLOAT(name, val) float name = val
 #define ADJUST_GLOBAL_CONST_INT(name, val) int name = val
+#define ADJUST_GLOBAL_CONST_STRING(name, val) char *name = val
 
 #define ADJUST_GLOBAL_VAR_BOOL(name, val) bool name = val
 #define ADJUST_GLOBAL_VAR_CHAR(name, val) char name = val
 #define ADJUST_GLOBAL_VAR_FLOAT(name, val) float name = val
 #define ADJUST_GLOBAL_VAR_INT(name, val) int name = val
+#define ADJUST_GLOBAL_VAR_STRING(name, val) char *name = val
 
 #define adjust_register_global_bool(name)                                      \
-    _adjust_register_global(&name, _ADJUST_BOOL, __FILE_NAME__, #name)
+    _adjust_register_global(&name, _ADJUST_BOOL, __FILE__, #name)
 
 #define adjust_register_global_char(name)                                      \
-    _adjust_register_global(&name, _ADJUST_CHAR, __FILE_NAME__, #name)
+    _adjust_register_global(&name, _ADJUST_CHAR, __FILE__, #name)
 
 #define adjust_register_global_float(name)                                     \
-    _adjust_register_global(&name, _ADJUST_FLOAT, __FILE_NAME__, #name)
+    _adjust_register_global(&name, _ADJUST_FLOAT, __FILE__, #name)
 
 #define adjust_register_global_int(name)                                       \
-    _adjust_register_global(&name, _ADJUST_INT, __FILE_NAME__, #name)
+    _adjust_register_global(&name, _ADJUST_INT, __FILE__, #name)
 
-// #define adjust_register_global_string(ref)                                     \
-//     _adjust_register_global(ref, _ADJUST_STRING, __FILE_NAME__)
+#define adjust_register_global_string(name)                                    \
+    do                                                                         \
+    {                                                                          \
+        const char *_temp = name;                                              \
+        size_t _len = strlen(_temp) + 1;                                       \
+        name = malloc(sizeof(char) * _len);                                    \
+        memcpy(name, _temp, _len);                                             \
+        _adjust_register_global(&name, _ADJUST_STRING, __FILE__, #name);       \
+    } while (0)
 
 static void adjust_init(void)
 {
