@@ -89,12 +89,23 @@ SOFTWARE.
  *       dynamic array
  *
  * Ideal:
+ * - [ ] adjust_register_global_float could maybe use adjust_register_global
+ *       typeof, and then fail on unsupported type
  * - [ ] store file modification times, and only re-read when necessary
  * - [ ] threaded option, one thread per file. Will need to be lightweight,
  *       though
  * - [ ] I think if you do ADJUST_VAR_FLOAT(a, 2.0f) and then something
  *       like deregister_short, then everything could work. It means adding
  *       supporting remove in dynamic arrays. It's a litle obnoxious, though.
+ *
+ * Bugs:
+ *
+ *    1. Double registering should be breaking.
+ *
+ *    ```
+ *    adjust_register_global_int(g_a);
+ *    adjust_register_global_int(g_a);
+ *    ```
  *
  * FAQ:
  *
@@ -444,9 +455,11 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
 
 #define ADJUST_GLOBAL_CONST_BOOL(name, val) bool name = val
 #define ADJUST_GLOBAL_CONST_FLOAT(name, val) float name = val
+#define ADJUST_GLOBAL_CONST_INT(name, val) int name = val
 
 #define ADJUST_GLOBAL_VAR_BOOL(name, val) bool name = val
 #define ADJUST_GLOBAL_VAR_FLOAT(name, val) float name = val
+#define ADJUST_GLOBAL_VAR_INT(name, val) int name = val
 
 #define adjust_register_global_bool(name)                                      \
     _adjust_register_global(&name, _ADJUST_BOOL, __FILE_NAME__, #name)
@@ -457,8 +470,8 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
 #define adjust_register_global_float(name)                                     \
     _adjust_register_global(&name, _ADJUST_FLOAT, __FILE_NAME__, #name)
 
-// #define adjust_register_global_int(ref)                                        \
-//     _adjust_register_global(ref, _ADJUST_INT, __FILE_NAME__)
+#define adjust_register_global_int(name)                                       \
+    _adjust_register_global(&name, _ADJUST_INT, __FILE_NAME__, #name)
 
 // #define adjust_register_global_string(ref)                                     \
 //     _adjust_register_global(ref, _ADJUST_STRING, __FILE_NAME__)
