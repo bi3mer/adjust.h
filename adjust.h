@@ -397,16 +397,36 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
         exit(1);
     }
 
+    const size_t name_length = strlen(global_name);
     found = FALSE;
     line_number = 0;
     while (fgets(buffer, sizeof(buffer), file) != NULL)
     {
         ++line_number;
-        if (strstr(buffer, global_name) != NULL)
+        if (strstr(buffer, "ADJUST_GLOBAL_") != NULL &&
+            strstr(buffer, global_name) != NULL)
         {
-            printf("%s found at %lu\n", global_name, line_number);
-            found = TRUE;
-            break;
+            char *name_start = strchr(buffer, '(');
+            if (name_start == NULL)
+                continue;
+
+            ++name_start;
+            while (*name_start == ' ' || *name_start == '\t')
+                name_start++;
+
+            char *name_end = strchr(name_start, ',');
+            if (name_end == NULL)
+                continue;
+
+            if (strncmp(name_start, global_name, name_length) == 0)
+            {
+                char next_char = name_start[name_length];
+                if (next_char == ',' || next_char == ' ' || next_char == '\t')
+                {
+                    found = TRUE;
+                    break;
+                }
+            }
         }
     }
 

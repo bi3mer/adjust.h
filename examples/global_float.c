@@ -1,19 +1,19 @@
 #include "adjust.h"
 #include <unistd.h>
 
-ADJUST_GLOBAL_CONST_FLOAT(G1, 0.8f);
-ADJUST_GLOBAL_CONST_FLOAT(G2, 2.8f);
+ADJUST_GLOBAL_CONST_FLOAT(g_a, 0.1f);
+ADJUST_GLOBAL_CONST_FLOAT(g, 1.2f);
 
 int main(void)
 {
     adjust_init();
 
-    adjust_register_global_float(G1); // TODO: temp
-    adjust_register_global_float(G2); // TODO: temp
+    adjust_register_global_float(g_a);
+    adjust_register_global_float(
+        g); // TODO: temp, move below adjust_const_float
 
-    ADJUST_CONST_FLOAT(m1, 2.0f);
-    ADJUST_CONST_FLOAT(m2, 2.0f);
-    ADJUST_CONST_FLOAT(d, 10.5f);
+    ADJUST_CONST_FLOAT(aa, 2.2f);
+    ADJUST_CONST_FLOAT(a, 2.3f);
 
     // TODO:
     // adjust_register_global(&G, _ADJUST_FLOAT); // ordering doesn't matter!
@@ -24,15 +24,19 @@ int main(void)
         sleep(1);
     }
 
-    printf("Before G1: F = %f *%f*%f / %f = %f\n", G1, m1, m2, d,
-           G1 * m1 * m2 / d);
-    printf("Before G2: F = %f *%f*%f / %f = %f\n", G2, m1, m2, d,
-           G2 * m1 * m2 / d);
+    printf("Before\n");
+    printf("g_a: %f\n", g_a);
+    printf("g:   %f\n", g);
+    printf("aa:  %f\n", aa);
+    printf("a:   %f\n", a);
+
     adjust_update();
-    printf("After G1: F = %f *%f*%f / %f = %f\n", G1, m1, m2, d,
-           G1 * m1 * m2 / d);
-    printf("After G2: F = %f *%f*%f / %f = %f\n", G2, m1, m2, d,
-           G2 * m1 * m2 / d);
+
+    printf("\nAfter\n");
+    printf("g_a: %f\n", g_a);
+    printf("g:   %f\n", g);
+    printf("aa:  %f\n", aa);
+    printf("a:   %f\n", a);
 
     adjust_cleanup();
     return 0;

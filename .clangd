@@ -8,7 +8,7 @@ CompileFlags:
     - -Wcast-align
     - -Wcast-qual
     - -Wconversion
-    - -Wdeclaration-after-statement
+    # - -Wdeclaration-after-statement
     - -Wdouble-promotion
     - -Wduplicated-branches
     - -Wduplicated-cond
