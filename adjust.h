@@ -88,6 +88,11 @@ SOFTWARE.
  * - [ ] I think if you do ADJUST_VAR_FLOAT(a, 2.0f) and then something
  *       like deregister_short, then everything could work. It means adding
  *       supporting remove in dynamic arrays. It's a litle obnoxious, though.
+ * - [ ] Adjust update and with a second more targeted adjust_update_file so
+ *       that users can be really specific if they want to be
+ * - [ ] Update the documentation so that everything is more organized. Right
+ *       now, I am missing a info on globals, temps, and differences in update.
+ *
  *
  * Bugs:
  *
@@ -181,8 +186,15 @@ typedef int bool;
 #define adjust_register_global_int(name) ()
 #define adjust_register_global_string(name) ()
 
+#define ADJUST_BOOL(v) (v)
+#define ADJUST_CHAR(v) (v)
+#define ADJUST_INT(v) (v)
+#define ADJUST_FLOAT(v) (v)
+#define ADJUST_STRING(v) (v)
+
 #define adjust_init() ()
 #define adjust_update() ()
+#define adjust_update_file() ()
 #define adjust_cleanup() ()
 
 #else
@@ -269,7 +281,8 @@ static inline void _da_free(void *da)
 }
 
 /******************************************************************************/
-/* Adjust */
+/**************** Adjust ****************/
+/* Structs and global state with _files */
 typedef enum
 {
     _ADJUST_FLOAT = 0,
@@ -294,6 +307,7 @@ typedef struct _ADJUST_FILE
 
 _ADJUST_FILE *_files;
 
+/* Declarations for long-lived adjustable data */
 static void _adjust_register(void *val, _ADJUST_TYPE type,
                              const char *file_name, const size_t line_number)
 {
@@ -387,6 +401,7 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
         _adjust_register(&name, _ADJUST_STRING, __FILE__, __LINE__);           \
     } while (0)
 
+/* Declarations for global adjustable data */
 static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
                                     const char *file_name,
                                     const char *global_name)
@@ -482,9 +497,24 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
         _adjust_register_global(&name, _ADJUST_STRING, __FILE__, #name);       \
     } while (0)
 
+/* Declarations for temporary data */
+void _adjust_register_and_get_float(const char *file_name,
+                                    const size_t line_number)
+{
+}
+
+// float a = ADJUST_FLOAT(n);
+#define ADJUST_FLOAT(n) _adjust_register_and_get_float(__FILE__, __LINE__)
+
+/* init, update, and cleanup*/
 static void adjust_init(void)
 {
     _files = (_ADJUST_FILE *)_da_init(sizeof(_ADJUST_FILE), 4);
+}
+
+static void adjust_update_file(const char *file_name)
+{
+    // TODO
 }
 
 static void adjust_update(void)
