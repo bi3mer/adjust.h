@@ -83,16 +83,14 @@ SOFTWARE.
  * - [ ] adjust_register_global_float could maybe use adjust_register_global
  *       typeof, and then fail on unsupported type
  * - [ ] Store file modification times, and only re-read when necessary
- * - [ ] Threaded option, one thread per file. Will need to be lightweight,
- *       though
  * - [ ] I think if you do ADJUST_VAR_FLOAT(a, 2.0f) and then something
  *       like deregister_short, then everything could work. It means adding
  *       supporting remove in dynamic arrays. It's a litle obnoxious, though.
  * - [ ] Adjust update and with a second more targeted adjust_update_file so
- *       that users can be really specific if they want to be
- * - [ ] Update the documentation so that everything is more organized. Right
- *       now, I am missing a info on globals, temps, and differences in update.
- *
+ *       that users can be really specific if they want to be. Also, add an
+ *       example to show the difference.
+ * - [ ] Threaded option, one thread per file. Will need to be lightweight,
+ *       though
  *
  * Bugs:
  *

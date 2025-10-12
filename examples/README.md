@@ -1,18 +1,6 @@
 # Examples
 
-## Timer Examples
-
-Adjust supports several simple types, and there are example files in this directory for each:
-
-- [type_bool.c](./type_bool.c)
-- [type_char.c](./type_char.c) // not implemented yet...
-- [type_float.c](./type_float.c)
-- [type_int.c](./type_int.c)
-- [type_string.c](./type_string.c)
-- [global.c](./global.c) // globals are not yet supported
-
-These can all be built with `make` and cleaned up with `make clean`.
-
-## Raylib Example
-
-There is a `raylib` example in [raylib-example](./raylib-example) that builds with CMake.
+- [global](./global) contains examples of adjustable global variables.
+- [main_variables](./main_variables) contains examples of adjustable variables made at the top of `main`.
+- [short_variables](./short_variables) contains examples of adjustable variables declared in functions.
+- [raylib-example](./raylib-example) has an example of a [bouncing ball](https://www.raylib.com/examples/shapes/loader.html?name=shapes_bouncing_ball) in [raylib](https://www.raylib.com/) that allows you to adjust certain elements of the simulation.
