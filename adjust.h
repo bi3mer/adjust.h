@@ -442,18 +442,6 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
     _adjust_register(ref, type, file_name, line_number);
 }
 
-// #define ADJUST_GLOBAL_CONST_BOOL(name, val) const float name = val;
-// #define ADJUST_GLOBAL_CONST_CHAR(name, val) const float name = val;
-// #define ADJUST_GLOBAL_CONST_INT(name, val) const float name = val;
-// #define ADJUST_GLOBAL_CONST_FLOAT(name, val) const float name = val;
-// #define ADJUST_GLOBAL_CONST_STING(name, val) const float name = val;
-
-// #define ADJUST_GLOBAL_VAR_BOOL(name, val) float name = val;
-// #define ADJUST_GLOBAL_VAR_CHAR(name, val) float name = val;
-// #define ADJUST_GLOBAL_VAR_INT(name, val) float name = val;
-// #define ADJUST_GLOBAL_VAR_FLOAT(name, val) float name = val;
-// #define ADJUST_GLOBAL_VAR_STING(name, val) float name = val;
-
 #define ADJUST_GLOBAL_CONST_BOOL(name, val) bool name = val
 #define ADJUST_GLOBAL_CONST_FLOAT(name, val) float name = val
 
@@ -477,8 +465,7 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
 
 static void adjust_init(void)
 {
-    const size_t capacity = 4;
-    _files = (_ADJUST_FILE *)_da_init(sizeof(_ADJUST_FILE), capacity);
+    _files = (_ADJUST_FILE *)_da_init(sizeof(_ADJUST_FILE), 4);
 }
 
 static void adjust_update(void)
