@@ -82,15 +82,36 @@ SOFTWARE.
  * Ideal:
  * - [ ] adjust_register_global_float could maybe use adjust_register_global
  *       typeof, and then fail on unsupported type
+ *
  * - [ ] Store file modification times, and only re-read when necessary
+ *
  * - [ ] I think if you do ADJUST_VAR_FLOAT(a, 2.0f) and then something
  *       like deregister_short, then everything could work. It means adding
  *       supporting remove in dynamic arrays. It's a litle obnoxious, though.
  * - [ ] Adjust update and with a second more targeted adjust_update_file so
  *       that users can be really specific if they want to be. Also, add an
  *       example to show the difference.
+ *
+ * - [ ] Function to update the text of the source file. This will be used in
+ *       the two GUI examples where users will be able to open an editor GUI to
+ *       change values in the GUI and see updates live, but this will also
+ *       update the code.
+ *
+ * - [ ] Example: Dear IMGUI.
+ *
+ * - [ ] Example: Nuklear.
+ *
+ * - [ ] Interface so that the user can define what happens on errors, if they
+ *       want. So, right now, I say you have to exit on a failure, but they may
+ *       want different behavior. The interface could provide that. What I'd
+ *       need to add is, in addition to the interface, the behavior to handle
+ *       failure without breaking, and to return some kind of error message.
+ *       As part of the interface, there should be something for logging so
+ *       that, in a GUI option, the developer will be able to see something like
+ *       "INFO: adjust.h loaded GRAVITY" or "Error: formatting error with..."
+ *
  * - [ ] Threaded option, one thread per file. Will need to be lightweight,
- *       though
+ *       though...
  *
  * Bugs:
  *
@@ -492,13 +513,39 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
     } while (0)
 
 /* Declarations for temporary data */
-void _adjust_register_and_get_float(const char *file_name,
-                                    const size_t line_number)
+void *_adjust_register_and_get(const _ADJUST_TYPE type, const char *file_name,
+                               const size_t line_number)
 {
+    const size_t num_files = _da_length(_files);
+    for (size_t file_index = 0; file_index < num_files; ++file_index)
+    {
+        _ADJUST_FILE af = _files[file_index];
+        if (strcmp(af.file_name, file_name) != 0)
+        {
+            continue;
+        }
+
+        // TODO: If the line_number is already in files, then I just return the
+        //       pointer associated with it and leave the function early.
+
+        FILE *file = fopen(file_name, "r");
+        if (file == NULL)
+        {
+            fprintf(stderr, "Error: unable to open file: %s\n", file_name);
+            exit(1);
+        }
+
+        // TODO: If the line_number is not already in files, then I need to find
+        // it in the
+
+        fclose(file);
+        break;
+    }
 }
 
 // float a = ADJUST_FLOAT(n);
-#define ADJUST_FLOAT(n) _adjust_register_and_get_float(__FILE__, __LINE__)
+#define ADJUST_FLOAT(n)                                                        \
+    (*((float *)_adjust_register_and_get(_ADJUST_FLOAT, __FILE__, __LINE__)))
 
 /* init, update, and cleanup*/
 static void adjust_init(void)
