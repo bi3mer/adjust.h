@@ -848,6 +848,8 @@ static void adjust_cleanup(void)
         num_adjustables = _da_length(_files[i].adjustables);
         for (j = 0; j < num_adjustables; ++j)
         {
+            // TODO: free malloc'd variables. I probably need to add a flag for
+            //       whether a variable was malloc'd.
             if (adjustables[j].type == _ADJUST_STRING)
             {
                 char **string_ptr = (char **)adjustables[j].data;
