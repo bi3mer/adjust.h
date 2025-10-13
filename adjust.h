@@ -110,6 +110,9 @@ SOFTWARE.
  *       that, in a GUI option, the developer will be able to see something like
  *       "INFO: adjust.h loaded GRAVITY" or "Error: formatting error with..."
  *
+ * - [ ] I need to test with a tool like Valgrind to make sure that I don't
+ *       have any memory leaks.
+ *
  * - [ ] Threaded option, one thread per file. Will need to be lightweight,
  *       though...
  *
