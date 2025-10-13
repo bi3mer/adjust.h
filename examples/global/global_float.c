@@ -1,8 +1,8 @@
 #include "adjust.h"
 #include <unistd.h>
 
-ADJUST_GLOBAL_CONST_FLOAT(g_a, 0.1f);
-ADJUST_GLOBAL_CONST_FLOAT(g, 1.2f);
+ADJUST_GLOBAL_CONST_FLOAT(g_a, 0.2f);
+ADJUST_GLOBAL_CONST_FLOAT(g, 1.3f);
 
 int main(void)
 {

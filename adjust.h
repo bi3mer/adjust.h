@@ -433,10 +433,6 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
             while (*name_start == ' ' || *name_start == '\t')
                 name_start++;
 
-            char *name_end = strchr(name_start, ',');
-            if (name_end == NULL)
-                continue;
-
             if (strncmp(name_start, global_name, name_length) == 0)
             {
                 char next_char = name_start[name_length];
