@@ -8,6 +8,8 @@ int main(void)
 {
     adjust_init();
 
+    ADJUST_CONST_BOOL(before_globals, TRUE);
+
     adjust_register_global_bool(toggle1);
     adjust_register_global_bool(toggle2);
 
@@ -19,9 +21,11 @@ int main(void)
 
     printf("Before: %i\n", toggle1);
     printf("Before: %i\n", toggle2);
+    printf("Before: %i\n", before_globals);
     adjust_update();
     printf("After: %i\n", toggle1);
     printf("After: %i\n", toggle2);
+    printf("After: %i\n", before_globals);
 
     adjust_cleanup();
     return 0;

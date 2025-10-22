@@ -2,7 +2,7 @@ CC = cc
 CFLAGS = -Wall -Wextra -Wpedantic -std=c99 -g -DMODE_DEBUG
 LDFLAGS =
 LDLIBS =
-INCLUDES = -I../../  # For adjust.h
+INCLUDES = -I./  # For adjust.h
 SOURCES = $(wildcard *.c)
 EXECUTABLES = $(SOURCES:%.c=build_%)
 

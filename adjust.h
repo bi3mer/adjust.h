@@ -79,7 +79,11 @@ SOFTWARE.
  * an issue if something doesn't work for you. Also, see the examples directory
  * to see how adjust.h can be used.
  *
- * Ideal:
+ * Todo:
+ *
+ * - [ ] I shouldn't need two separate approaches for temp variables and main
+ *       variables. Just malloc and make the interface way easier to work with.
+ *
  * - [ ] adjust_register_global_float could maybe use adjust_register_global
  *       typeof, and then fail on unsupported type
  *
@@ -88,6 +92,7 @@ SOFTWARE.
  * - [ ] I think if you do ADJUST_VAR_FLOAT(a, 2.0f) and then something
  *       like deregister_short, then everything could work. It means adding
  *       supporting remove in dynamic arrays. It's a litle obnoxious, though.
+ *
  * - [ ] Adjust update and with a second more targeted adjust_update_file so
  *       that users can be really specific if they want to be. Also, add an
  *       example to show the difference.
@@ -258,7 +263,6 @@ static void *_da_init(const size_t item_size, const size_t capacity)
 
 static void _da_ensure_capacity(void **da, const size_t capacity_increase)
 {
-
     _DA_Header *h = ((_DA_Header *)(*da) - 1);
     if (h->length + capacity_increase > h->capacity)
     {
@@ -546,9 +550,16 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, const char *file_name,
     }
 }
 
-// float a = ADJUST_FLOAT(n);
+#define ADJUST_BOOL(v)                                                         \
+    (*((bool *)_adjust_register_and_get(_ADJUST_BOOL, __FILE__, __LINE__)))
+
+#define ADJUST_CHAR(v) (v)
+#define ADJUST_INT(v) (v)
+
 #define ADJUST_FLOAT(n)                                                        \
     (*((float *)_adjust_register_and_get(_ADJUST_FLOAT, __FILE__, __LINE__)))
+
+#define ADJUST_STRING(v) (v)
 
 /* init, update, and cleanup*/
 static void adjust_init(void)
@@ -671,6 +682,7 @@ static void adjust_update(void)
                     fclose(file);
                     exit(1);
                 }
+
                 break;
             }
 
@@ -714,6 +726,7 @@ static void adjust_update(void)
                 }
 
                 *(char *)e.data = *quote_start;
+
                 break;
             }
 
@@ -824,8 +837,8 @@ static void adjust_update(void)
                 }
 
                 *dst = '\0';
-
                 *(char **)e.data = new_string;
+
                 break;
             }
 
