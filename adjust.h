@@ -689,7 +689,7 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
 #define ADJUST_INT(v) (v)
 
 #define ADJUST_FLOAT(v)                                                        \
-    (*((float *)_adjust_register_and_get(_ADJUST_FLOAT, &v, __FILE__,          \
+    (*((float *)_adjust_register_and_get(_ADJUST_FLOAT, &(float){v}, __FILE__, \
                                          __LINE__)))
 
 #define ADJUST_STRING(v) (v)
