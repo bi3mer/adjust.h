@@ -383,7 +383,7 @@ typedef struct _ADJUST_ENTRY
 {
     _ADJUST_TYPE type;
     size_t line_number;
-    bool should_free;
+    bool should_cleanup;
     void *data;
 } _ADJUST_ENTRY;
 
@@ -435,6 +435,7 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
         adjustables = _files[file_index].adjustables;
         adjustables[0].type = type;
         adjustables[0].line_number = line_number;
+        adjustables[0].should_cleanup = (type == _ADJUST_STRING);
         adjustables[0].data = val; /* char**, not char* for string */
 
         _da_increment_length(_files[file_index].adjustables);
@@ -449,6 +450,7 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
         adjustables = _files[file_index].adjustables;
         adjustables[i].type = type;
         adjustables[i].line_number = line_number;
+        adjustables[i].should_cleanup = (type == _ADJUST_STRING);
         adjustables[i].data = val; /* char**, not char* for string */
     }
 }
@@ -633,20 +635,28 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
             }
         }
 
-        _da_priority_insert((void **)&adjustables, line_number,
-                            _adjust_priority_compare);
+        i = _da_priority_insert((void **)&adjustables, line_number,
+                                _adjust_priority_compare);
 
         adjustables = af.adjustables;
-        adjustables[0].type = type;
-        adjustables[0].line_number = line_number;
-        adjustables[0].should_free = TRUE;
+        adjustables[i].type = type;
+        adjustables[i].line_number = line_number;
+        adjustables[i].should_cleanup = TRUE;
 
-        const size_t size = type == _ADJUST_STRING
-                                ? sizeof(char) * (strlen((char *)val) + 1)
-                                : _adjust_type_to_size(type);
+        if (type == _ADJUST_STRING)
+        {
+            adjustables[i].data = malloc(sizeof(char *));
+            char **str_ptr = (char **)adjustables[i].data;
+            *str_ptr = malloc(strlen((char *)val) + 1);
+            strcpy(*str_ptr, (char *)val);
+        }
+        else
+        {
+            const size_t size = _adjust_type_to_size(type);
+            adjustables[i].data = malloc(size);
+            memcpy(adjustables[i].data, val, size);
+        }
 
-        adjustables[0].data = malloc(size);
-        memcpy(adjustables[0].data, val, size);
         return adjustables[i].data; /* early return */
     }
 
@@ -661,16 +671,23 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
         adjustables = _files[file_index].adjustables;
         adjustables[0].type = type;
         adjustables[0].line_number = line_number;
-        adjustables[0].should_free = TRUE;
+        adjustables[0].should_cleanup = TRUE;
 
         _da_increment_length(_files);
 
-        const size_t size = type == _ADJUST_STRING
-                                ? sizeof(char) * strlen((char *)val)
-                                : _adjust_type_to_size(type);
-
-        adjustables[0].data = malloc(size);
-        memcpy(adjustables[0].data, val, size);
+        if (type == _ADJUST_STRING)
+        {
+            adjustables[0].data = malloc(sizeof(char *));
+            char **str_ptr = (char **)adjustables[0].data;
+            *str_ptr = malloc(strlen((char *)val) + 1);
+            strcpy(*str_ptr, (char *)val);
+        }
+        else
+        {
+            const size_t size = _adjust_type_to_size(type);
+            adjustables[0].data = malloc(size);
+            memcpy(adjustables[0].data, val, size);
+        }
 
         _da_increment_length(_files[file_index].adjustables);
 
@@ -692,13 +709,17 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
     (*((char *)_adjust_register_and_get(_ADJUST_CHAR, &(char){v}, __FILE__,    \
                                         __LINE__)))
 
-#define ADJUST_INT(v) (v)
+#define ADJUST_INT(v)                                                          \
+    (*((int *)_adjust_register_and_get(_ADJUST_INT, &(int){v}, __FILE__,       \
+                                       __LINE__)))
 
 #define ADJUST_FLOAT(v)                                                        \
     (*((float *)_adjust_register_and_get(_ADJUST_FLOAT, &(float){v}, __FILE__, \
                                          __LINE__)))
 
-#define ADJUST_STRING(v) (v)
+#define ADJUST_STRING(v)                                                       \
+    (*((char **)_adjust_register_and_get(_ADJUST_STRING, &(char[]){v},         \
+                                         __FILE__, __LINE__)))
 
 /* init, update, and cleanup*/
 static void adjust_init(void)
@@ -729,7 +750,10 @@ static void adjust_update(void)
         file = fopen(af.file_name, "r");
         if (file == NULL)
         {
-            fprintf(stderr, "Error: unable to open file: %s\n", af.file_name);
+            fprintf(stderr,
+                    "Error: unable to "
+                    "open file: %s\n",
+                    af.file_name);
             exit(1);
         }
 
@@ -742,7 +766,10 @@ static void adjust_update(void)
             {
                 if (fgets(buffer, sizeof(buffer), file) == NULL)
                 {
-                    fprintf(stderr, "Error: EOF before line %lu in %s\n",
+                    fprintf(stderr,
+                            "Error: EOF "
+                            "before line "
+                            "%lu in %s\n",
                             e.line_number, af.file_name);
                     fclose(file);
                     exit(1);
@@ -759,13 +786,16 @@ static void adjust_update(void)
                 if (value_start == NULL)
                 {
                     fprintf(stderr,
-                            "Error: no comma found in ADJUST macro: "
+                            "Error: no comma "
+                            "found in ADJUST "
+                            "macro: "
                             "%s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
                 }
-                ++value_start; /* skip the ',' */
+                ++value_start; /* skip the
+                                  ',' */
             }
             else if (strstr(buffer, "ADJUST_BOOL(") ||
                      strstr(buffer, "ADJUST_CHAR(") ||
@@ -776,7 +806,10 @@ static void adjust_update(void)
                 value_start = strchr(buffer, '(');
                 if (value_start == NULL)
                 {
-                    fprintf(stderr, "Error: no opening paren found: %s:%lu\n",
+                    fprintf(stderr,
+                            "Error: no "
+                            "opening paren "
+                            "found: %s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
@@ -785,13 +818,16 @@ static void adjust_update(void)
             else
             {
                 fprintf(stderr,
-                        "Error: unrecognized ADJUST macro format: %s:%lu\n",
+                        "Error: unrecognized "
+                        "ADJUST macro format: "
+                        "%s:%lu\n",
                         af.file_name, e.line_number);
                 fclose(file);
                 exit(1);
             }
 
-            /* skip white space after ',' */
+            /* skip white space after ','
+             */
             ++value_start;
             while (*value_start &&
                    (*value_start == ' ' || *value_start == '\t'))
@@ -805,7 +841,10 @@ static void adjust_update(void)
             {
                 if (sscanf(value_start, "%f", (float *)e.data) != 1)
                 {
-                    fprintf(stderr, "Error: failed to parse float: %s:%lu\n",
+                    fprintf(stderr,
+                            "Error: failed to "
+                            "parse float: "
+                            "%s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
@@ -818,7 +857,10 @@ static void adjust_update(void)
             {
                 if (sscanf(value_start, "%i", (int *)e.data) != 1)
                 {
-                    fprintf(stderr, "Error, failed to parse int: %s:%lu\n",
+                    fprintf(stderr,
+                            "Error, failed to "
+                            "parse int: "
+                            "%s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
@@ -844,7 +886,9 @@ static void adjust_update(void)
                 else
                 {
                     fprintf(stderr,
-                            "Error: failed to parse bool (true or false): "
+                            "Error: failed to "
+                            "parse bool (true "
+                            "or false): "
                             "%s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
@@ -862,7 +906,9 @@ static void adjust_update(void)
                 if (!quote_start)
                 {
                     fprintf(stderr,
-                            "Error: failed to find starting quotation (\'): "
+                            "Error: failed to "
+                            "find starting "
+                            "quotation (\'): "
                             "%s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
@@ -873,7 +919,10 @@ static void adjust_update(void)
                 if (*quote_start == '\'')
                 {
                     fprintf(stderr,
-                            "Error: char format '' invalid in C, %s:%lu\n",
+                            "Error: char "
+                            "format '' "
+                            "invalid in "
+                            "C, %s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
@@ -887,7 +936,9 @@ static void adjust_update(void)
                 if (*(quote_start + 1) != '\'')
                 {
                     fprintf(stderr,
-                            "Error: missing ending ' for char, %s:%lu\n",
+                            "Error: missing "
+                            "ending ' for "
+                            "char, %s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
@@ -907,7 +958,9 @@ static void adjust_update(void)
                 if (!quote_start)
                 {
                     fprintf(stderr,
-                            "Error: failed to find starting quotation (\"): "
+                            "Error: failed to "
+                            "find starting "
+                            "quotation (\"): "
                             "%s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
@@ -934,10 +987,12 @@ static void adjust_update(void)
 
                 if (*quote_end != '"')
                 {
-                    fprintf(
-                        stderr,
-                        "Error: failed to find ending quotation (\"): %s:%lu\n",
-                        af.file_name, e.line_number);
+                    fprintf(stderr,
+                            "Error: failed to "
+                            "find ending "
+                            "quotation (\"): "
+                            "%s:%lu\n",
+                            af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
                 }
@@ -946,10 +1001,12 @@ static void adjust_update(void)
                 new_string = realloc(*(char **)e.data, string_length + 1);
                 if (!new_string)
                 {
-                    fprintf(
-                        stderr,
-                        "Error: failed to reallocate string memory: %s:%lu\n",
-                        af.file_name, e.line_number);
+                    fprintf(stderr,
+                            "Error: failed to "
+                            "reallocate "
+                            "string memory: "
+                            "%s:%lu\n",
+                            af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
                 }
@@ -959,7 +1016,8 @@ static void adjust_update(void)
                 {
                     if (*quote_start == '\\' && (quote_start + 1) < quote_end)
                     {
-                        quote_start++; /* Skip backslash */
+                        quote_start++; /* Skip
+                                          backslash */
                         switch (*quote_start)
                         {
                         case 'n':
@@ -1011,7 +1069,10 @@ static void adjust_update(void)
             }
 
             default:
-                fprintf(stderr, "Error: unhandled adjust type: %u\n", e.type);
+                fprintf(stderr,
+                        "Error: unhandled "
+                        "adjust type: %u\n",
+                        e.type);
                 fclose(file);
                 exit(1);
             }
@@ -1032,15 +1093,7 @@ static void adjust_cleanup(void)
         num_adjustables = _da_length(_files[i].adjustables);
         for (j = 0; j < num_adjustables; ++j)
         {
-            // TODO: I feel like I shouldn't need two conditions here, but let's
-            // come back to it later
-            if (adjustables[j].type == _ADJUST_STRING)
-            {
-                char **string_ptr = (char **)adjustables[j].data;
-                free(*string_ptr);
-                *string_ptr = NULL;
-            }
-            else if (adjustables[i].should_free)
+            if (adjustables[i].should_cleanup)
             {
                 free(adjustables[i].data);
                 adjustables[i].data = NULL;
