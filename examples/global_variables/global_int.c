@@ -1,8 +1,8 @@
 #include "adjust.h"
 #include <unistd.h>
 
-ADJUST_GLOBAL_CONST_INT(g_a, 11);
-ADJUST_GLOBAL_CONST_INT(g_b, 110);
+ADJUST_GLOBAL_CONST_INT(g_a, 10);
+ADJUST_GLOBAL_CONST_INT(g_b, 100);
 
 int main(void)
 {

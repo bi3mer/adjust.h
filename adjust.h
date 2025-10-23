@@ -295,7 +295,7 @@ static size_t _da_priority_insert(void **da, const size_t priority,
                                   int (*compare)(const void *, const size_t))
 {
     size_t i, insert_index;
-    insert_index = 0;
+    insert_index = 1;
 
     _DA_Header *h = ((_DA_Header *)(*da) - 1);
     char *bytes = (char *)(*da);
@@ -312,6 +312,7 @@ static size_t _da_priority_insert(void **da, const size_t priority,
 
     if (insert_index < h->length)
     {
+        printf("Moving data!\n");
         memmove(bytes + ((insert_index + 1) * h->item_size),
                 bytes + (insert_index * h->item_size),
                 (h->length - insert_index) * h->item_size);
@@ -442,6 +443,8 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
     {
         i = _da_priority_insert((void **)&_files[file_index].adjustables,
                                 line_number, _adjust_priority_compare);
+
+        printf("priority: %lu\n", i);
 
         adjustables = _files[file_index].adjustables;
         adjustables[i].type = type;
@@ -685,7 +688,10 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
     (*((bool *)_adjust_register_and_get(_ADJUST_BOOL, &(bool){v}, __FILE__,    \
                                         __LINE__)))
 
-#define ADJUST_CHAR(v) (v)
+#define ADJUST_CHAR(v)                                                         \
+    (*((char *)_adjust_register_and_get(_ADJUST_CHAR, &(char){v}, __FILE__,    \
+                                        __LINE__)))
+
 #define ADJUST_INT(v) (v)
 
 #define ADJUST_FLOAT(v)                                                        \
