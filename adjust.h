@@ -285,6 +285,37 @@ static void _da_ensure_capacity(void **da, const size_t capacity_increase)
     }
 }
 
+static size_t _da_priority_insert(void **da, const size_t priority,
+                                  int (*compare)(const void *, const size_t))
+{
+    size_t i, insert_index;
+    insert_index = 0;
+
+    _DA_Header *h = ((_DA_Header *)(*da) - 1);
+    char *bytes = (char *)(*da);
+
+    _da_ensure_capacity(da, 1);
+    for (i = 0; i < h->length; ++i)
+    {
+        if (compare(bytes + (i * h->item_size), priority) > 0)
+        {
+            insert_index = i;
+            break;
+        }
+    }
+
+    if (insert_index < h->length)
+    {
+        memmove(bytes + ((insert_index + 1) * h->item_size),
+                bytes + (insert_index * h->item_size),
+                (h->length - insert_index) * h->item_size);
+    }
+
+    ++h->length;
+
+    return insert_index;
+}
+
 static inline size_t _da_length(const void *da)
 {
     return da ? ((const _DA_Header *)da - 1)->length : 0;
@@ -333,13 +364,23 @@ typedef struct _ADJUST_FILE
 
 _ADJUST_FILE *_files;
 
+/* helper for comparing priority of _ADJUST_ENTRY entries. Note, though that
+ * this will faill if line_number is greater than INT_MAX */
+static inline int _adjust_priority_compare(const void *element,
+                                           const size_t priority)
+{
+
+    const _ADJUST_ENTRY *ae = (const _ADJUST_ENTRY *)element;
+    return (int)ae->line_number - (int)priority;
+}
+
 /* Declarations for long-lived adjustable data */
 static void _adjust_register(void *val, _ADJUST_TYPE type,
                              const char *file_name, const size_t line_number)
 {
     _ADJUST_ENTRY *adjustables;
     bool found = FALSE;
-    size_t file_index, adjustable_index;
+    size_t file_index, i;
 
     const size_t length = _da_length(_files);
     for (file_index = 0; file_index < length; ++file_index)
@@ -354,23 +395,29 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
     if (!found)
     {
         _da_ensure_capacity((void **)&_files, 1);
+        _da_increment_length(_files);
+
         _files[file_index].file_name = file_name;
         _files[file_index].adjustables =
             (_ADJUST_ENTRY *)_da_init(sizeof(_ADJUST_ENTRY), 4);
 
-        _da_increment_length(_files);
+        adjustables = _files[file_index].adjustables;
+        adjustables[0].type = type;
+        adjustables[0].line_number = line_number;
+        adjustables[0].data = val; // char**, not char* for string
+
+        _da_increment_length(_files[file_index].adjustables);
     }
+    else
+    {
+        i = _da_priority_insert((void **)&_files[file_index].adjustables,
+                                line_number, _adjust_priority_compare);
 
-    adjustable_index = _da_length(_files[file_index].adjustables);
-    _da_ensure_capacity((void **)&(_files[file_index].adjustables), 1);
-
-    adjustables = _files[file_index].adjustables;
-    adjustables[adjustable_index].type = type;
-    adjustables[adjustable_index].line_number = line_number;
-    adjustables[adjustable_index].data = val;
-    /* NOTE: if this is a string, we are storing a char** not a char* */
-
-    _da_increment_length(_files[file_index].adjustables);
+        adjustables = _files[file_index].adjustables;
+        adjustables[i].type = type;
+        adjustables[i].line_number = line_number;
+        adjustables[i].data = val; // char**, not char* for string
+    }
 }
 
 #define ADJUST_VAR_FLOAT(name, val)                                            \
