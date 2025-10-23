@@ -65,15 +65,21 @@ SOFTWARE.
  * Note, adjust.h will not work for short-lived variables. Here is an example
  * that will not work:
  *
- * float area(float radius)
+ * float jump_height(float pressure)
  * {
- *     ADJUST_CONST_FLOAT(PI, 3.14159265358979323846f);
- *     return 2 * PI * radius;
+ *     ADJUST_CONST_FLOAT(tweak, 3.14f);
+ *     return pressure * tweak;
  * }
  *
- * Granted, I have no idea why you would want to adjust PI, but this example
- * will not work because adjust.h relies on setting up pointers which are
- * stored and then used to modifiy the value when `adjust_update()` is called.
+ * This example will not work because adjust.h relies on setting up pointers
+ * which are stored and then used to modifiy the value when `adjust_update()` is
+ * called. However, you can use:
+ *
+ * float jump_height(float pressure)
+ * {
+ *     const float tweak = ADJUST_FLOAT(3.14f);
+ *     return pressure * tweak;
+ * }
  *
  * Please feel free to make any contributions via a pull request or to submit
  * an issue if something doesn't work for you. Also, see the examples directory
@@ -349,10 +355,34 @@ typedef enum
     _ADJUST_STRING
 } _ADJUST_TYPE;
 
+static inline size_t _adjust_type_to_size(const _ADJUST_TYPE t)
+{
+    switch (t)
+    {
+    case _ADJUST_FLOAT:
+        return sizeof(float);
+    case _ADJUST_INT:
+        return sizeof(int);
+    case _ADJUST_BOOL:
+        return sizeof(bool);
+    case _ADJUST_CHAR:
+        return sizeof(char);
+    case _ADJUST_STRING:
+        fprintf(stderr,
+                "Error: invalid adjust type size should not receive string "
+                "type\n");
+        exit(1);
+    default:
+        fprintf(stderr, "Error: invalid adjust type size: %i\n", t);
+        exit(1);
+    }
+}
+
 typedef struct _ADJUST_ENTRY
 {
     _ADJUST_TYPE type;
     size_t line_number;
+    bool should_free;
     void *data;
 } _ADJUST_ENTRY;
 
@@ -404,7 +434,7 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
         adjustables = _files[file_index].adjustables;
         adjustables[0].type = type;
         adjustables[0].line_number = line_number;
-        adjustables[0].data = val; // char**, not char* for string
+        adjustables[0].data = val; /* char**, not char* for string */
 
         _da_increment_length(_files[file_index].adjustables);
     }
@@ -416,7 +446,7 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
         adjustables = _files[file_index].adjustables;
         adjustables[i].type = type;
         adjustables[i].line_number = line_number;
-        adjustables[i].data = val; // char**, not char* for string
+        adjustables[i].data = val; /* char**, not char* for string */
     }
 }
 
@@ -479,6 +509,8 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
                                     const char *file_name,
                                     const char *global_name)
 {
+    // TODO: Why do I need to read a file on every register? I don't know why I
+    //       care about the name of the global variable.
     FILE *file;
     char buffer[256];
     size_t line_number;
@@ -567,44 +599,98 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
     } while (0)
 
 /* Declarations for temporary data */
-void *_adjust_register_and_get(const _ADJUST_TYPE type, const char *file_name,
-                               const size_t line_number)
+void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
+                               const char *file_name, const size_t line_number)
 {
+    _ADJUST_ENTRY *adjustables;
+    size_t file_index, i;
     const size_t num_files = _da_length(_files);
-    for (size_t file_index = 0; file_index < num_files; ++file_index)
+
+    for (file_index = 0; file_index < num_files; ++file_index)
     {
+        // find file
         _ADJUST_FILE af = _files[file_index];
         if (strcmp(af.file_name, file_name) != 0)
         {
             continue;
         }
 
-        // TODO: If the line_number is already in files, then I just return the
-        //       pointer associated with it and leave the function early.
-
-        FILE *file = fopen(file_name, "r");
-        if (file == NULL)
+        // find data if available
+        adjustables = af.adjustables;
+        const size_t length = _da_length(adjustables);
+        for (i = 0; i < length; ++i)
         {
-            fprintf(stderr, "Error: unable to open file: %s\n", file_name);
-            exit(1);
+            if (adjustables[i].line_number == line_number)
+            {
+                return adjustables[i].data; /* early return */
+            }
+            else if (adjustables[i].line_number > line_number)
+            {
+                break;
+            }
         }
 
-        // TODO: If the line_number is not already in files, then I need to find
-        // it in the
+        _da_priority_insert((void **)&adjustables, line_number,
+                            _adjust_priority_compare);
 
-        fclose(file);
-        break;
+        adjustables = af.adjustables;
+        adjustables[0].type = type;
+        adjustables[0].line_number = line_number;
+        adjustables[0].should_free = TRUE;
+
+        const size_t size = type == _ADJUST_STRING
+                                ? sizeof(char) * (strlen((char *)val) + 1)
+                                : _adjust_type_to_size(type);
+
+        adjustables[0].data = malloc(size);
+        memcpy(adjustables[0].data, val, size);
+        return adjustables[i].data; /* early return */
     }
+
+    if (file_index == num_files)
+    {
+        _da_ensure_capacity((void **)&_files, 1);
+
+        _files[file_index].file_name = file_name;
+        _files[file_index].adjustables =
+            (_ADJUST_ENTRY *)_da_init(sizeof(_ADJUST_ENTRY), 4);
+
+        adjustables = _files[file_index].adjustables;
+        adjustables[0].type = type;
+        adjustables[0].line_number = line_number;
+        adjustables[0].should_free = TRUE;
+
+        _da_increment_length(_files);
+
+        const size_t size = type == _ADJUST_STRING
+                                ? sizeof(char) * strlen((char *)val)
+                                : _adjust_type_to_size(type);
+
+        adjustables[0].data = malloc(size);
+        memcpy(adjustables[0].data, val, size);
+
+        _da_increment_length(_files[file_index].adjustables);
+
+        return adjustables[0].data;
+    }
+
+    fprintf(stderr,
+            "Error: unhandled control flow pattern _adjust_register_and_get "
+            "for args %s:%lu\n",
+            file_name, line_number);
+    exit(1);
 }
 
 #define ADJUST_BOOL(v)                                                         \
-    (*((bool *)_adjust_register_and_get(_ADJUST_BOOL, __FILE__, __LINE__)))
+    (*((bool *)_adjust_register_and_get(_ADJUST_BOOL, &(bool){v}, __FILE__,    \
+                                        __LINE__)))
 
 #define ADJUST_CHAR(v) (v)
 #define ADJUST_INT(v) (v)
 
-#define ADJUST_FLOAT(n)                                                        \
-    (*((float *)_adjust_register_and_get(_ADJUST_FLOAT, __FILE__, __LINE__)))
+#define ADJUST_FLOAT(v)                                                        \
+    (*((float *)_adjust_register_and_get(_ADJUST_FLOAT, &v, __FILE__,          \
+                                         __LINE__)))
 
 #define ADJUST_STRING(v) (v)
 
@@ -659,12 +745,41 @@ static void adjust_update(void)
                 ++current_line;
             }
 
-            value_start = strchr(buffer, ',');
-            if (value_start == NULL)
+            if (strstr(buffer, "ADJUST_VAR_") ||
+                strstr(buffer, "ADJUST_CONST_") ||
+                strstr(buffer, "ADJUST_GLOBAL_"))
+            {
+                value_start = strchr(buffer, ',');
+                if (value_start == NULL)
+                {
+                    fprintf(stderr,
+                            "Error: no comma found in ADJUST macro: "
+                            "%s:%lu\n",
+                            af.file_name, e.line_number);
+                    fclose(file);
+                    exit(1);
+                }
+                ++value_start; /* skip the ',' */
+            }
+            else if (strstr(buffer, "ADJUST_BOOL(") ||
+                     strstr(buffer, "ADJUST_CHAR(") ||
+                     strstr(buffer, "ADJUST_INT(") ||
+                     strstr(buffer, "ADJUST_FLOAT(") ||
+                     strstr(buffer, "ADJUST_STRING("))
+            {
+                value_start = strchr(buffer, '(');
+                if (value_start == NULL)
+                {
+                    fprintf(stderr, "Error: no opening paren found: %s:%lu\n",
+                            af.file_name, e.line_number);
+                    fclose(file);
+                    exit(1);
+                }
+            }
+            else
             {
                 fprintf(stderr,
-                        "Error: no comma found in ADJUST macro: "
-                        "%s:%lu\n",
+                        "Error: unrecognized ADJUST macro format: %s:%lu\n",
                         af.file_name, e.line_number);
                 fclose(file);
                 exit(1);
@@ -838,7 +953,7 @@ static void adjust_update(void)
                 {
                     if (*quote_start == '\\' && (quote_start + 1) < quote_end)
                     {
-                        quote_start++; // Skip backslash
+                        quote_start++; /* Skip backslash */
                         switch (*quote_start)
                         {
                         case 'n':
@@ -911,13 +1026,18 @@ static void adjust_cleanup(void)
         num_adjustables = _da_length(_files[i].adjustables);
         for (j = 0; j < num_adjustables; ++j)
         {
-            // TODO: free malloc'd variables. I probably need to add a flag for
-            //       whether a variable was malloc'd.
+            // TODO: I feel like I shouldn't need two conditions here, but let's
+            // come back to it later
             if (adjustables[j].type == _ADJUST_STRING)
             {
                 char **string_ptr = (char **)adjustables[j].data;
                 free(*string_ptr);
                 *string_ptr = NULL;
+            }
+            else if (adjustables[i].should_free)
+            {
+                free(adjustables[i].data);
+                adjustables[i].data = NULL;
             }
         }
 

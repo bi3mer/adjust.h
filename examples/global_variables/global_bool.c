@@ -1,8 +1,8 @@
 #include "adjust.h"
 #include <unistd.h>
 
-ADJUST_GLOBAL_CONST_BOOL(toggle1, FALSE);
-ADJUST_GLOBAL_VAR_BOOL(toggle2, FALSE);
+ADJUST_GLOBAL_CONST_BOOL(toggle1, TRUE);
+ADJUST_GLOBAL_VAR_BOOL(toggle2, TRUE);
 
 int main(void)
 {
