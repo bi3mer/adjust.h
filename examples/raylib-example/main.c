@@ -40,8 +40,8 @@ int main(void)
 
     Vector2 ballPosition = {GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f};
     Vector2 ballSpeed = {5.0f, 4.0f};
-    ADJUST_CONST_INT(ballRadius, 10); // m
-    ADJUST_CONST_FLOAT(gravity, .2f); // m
+    ADJUST_CONST_INT(ballRadius, 50);  // m
+    ADJUST_CONST_FLOAT(gravity, 0.2f); // m
 
     bool useGravity = true;
     bool pause = 0;
@@ -56,13 +56,14 @@ int main(void)
     // Main game loop
     while (!WindowShouldClose()) // Detect window close button or ESC key
     {
-        adjust_update(); // m
         // Update
         //-----------------------------------------------------
         if (IsKeyPressed(KEY_G))
             useGravity = !useGravity;
         if (IsKeyPressed(KEY_SPACE))
             pause = !pause;
+        if (IsKeyPressed(KEY_R)) // m
+            adjust_update();     // m
 
         if (!pause)
         {

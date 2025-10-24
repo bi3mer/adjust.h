@@ -810,8 +810,7 @@ static void adjust_update(void)
                 exit(1);
             }
 
-            /* skip white space after ','
-             */
+            /* skip white space after ',' */
             ++value_start;
             while (*value_start &&
                    (*value_start == ' ' || *value_start == '\t'))
@@ -927,9 +926,7 @@ static void adjust_update(void)
                 if (!quote_start)
                 {
                     fprintf(stderr,
-                            "Error: failed to "
-                            "find starting "
-                            "quotation (\"): "
+                            "Error: failed to find starting quotation (\"): "
                             "%s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
