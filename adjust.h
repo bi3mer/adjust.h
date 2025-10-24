@@ -748,10 +748,7 @@ static void adjust_update(void)
         file = fopen(af.file_name, "r");
         if (file == NULL)
         {
-            fprintf(stderr,
-                    "Error: unable to "
-                    "open file: %s\n",
-                    af.file_name);
+            fprintf(stderr, "Error: unable to open file: %s\n", af.file_name);
             exit(1);
         }
 
@@ -764,10 +761,7 @@ static void adjust_update(void)
             {
                 if (fgets(buffer, sizeof(buffer), file) == NULL)
                 {
-                    fprintf(stderr,
-                            "Error: EOF "
-                            "before line "
-                            "%lu in %s\n",
+                    fprintf(stderr, "Error: EOF before line %lu in %s\n",
                             e.line_number, af.file_name);
                     fclose(file);
                     exit(1);
@@ -784,10 +778,7 @@ static void adjust_update(void)
                 if (value_start == NULL)
                 {
                     fprintf(stderr,
-                            "Error: no comma "
-                            "found in ADJUST "
-                            "macro: "
-                            "%s:%lu\n",
+                            "Error: no comma found in ADJUST macro: %s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
@@ -804,10 +795,7 @@ static void adjust_update(void)
                 value_start = strchr(buffer, '(');
                 if (value_start == NULL)
                 {
-                    fprintf(stderr,
-                            "Error: no "
-                            "opening paren "
-                            "found: %s:%lu\n",
+                    fprintf(stderr, "Error: no opening paren found: %s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
@@ -816,9 +804,7 @@ static void adjust_update(void)
             else
             {
                 fprintf(stderr,
-                        "Error: unrecognized "
-                        "ADJUST macro format: "
-                        "%s:%lu\n",
+                        "Error: unrecognized ADJUST macro format: %s:%lu\n",
                         af.file_name, e.line_number);
                 fclose(file);
                 exit(1);
@@ -896,9 +882,7 @@ static void adjust_update(void)
                 if (!quote_start)
                 {
                     fprintf(stderr,
-                            "Error: failed to "
-                            "find starting "
-                            "quotation (\'): "
+                            "Error: failed to find starting quotation (\'): "
                             "%s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
@@ -909,10 +893,7 @@ static void adjust_update(void)
                 if (*quote_start == '\'')
                 {
                     fprintf(stderr,
-                            "Error: char "
-                            "format '' "
-                            "invalid in "
-                            "C, %s:%lu\n",
+                            "Error: char format '' invalid in C, %s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
@@ -926,9 +907,7 @@ static void adjust_update(void)
                 if (*(quote_start + 1) != '\'')
                 {
                     fprintf(stderr,
-                            "Error: missing "
-                            "ending ' for "
-                            "char, %s:%lu\n",
+                            "Error: missing ending ' for char, %s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
@@ -977,12 +956,10 @@ static void adjust_update(void)
 
                 if (*quote_end != '"')
                 {
-                    fprintf(stderr,
-                            "Error: failed to "
-                            "find ending "
-                            "quotation (\"): "
-                            "%s:%lu\n",
-                            af.file_name, e.line_number);
+                    fprintf(
+                        stderr,
+                        "Error: failed to find ending quotation (\"): %s:%lu\n",
+                        af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
                 }
@@ -991,12 +968,10 @@ static void adjust_update(void)
                 new_string = realloc(*(char **)e.data, string_length + 1);
                 if (!new_string)
                 {
-                    fprintf(stderr,
-                            "Error: failed to "
-                            "reallocate "
-                            "string memory: "
-                            "%s:%lu\n",
-                            af.file_name, e.line_number);
+                    fprintf(
+                        stderr,
+                        "Error: failed to reallocate string memory: %s:%lu\n",
+                        af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
                 }
@@ -1059,10 +1034,7 @@ static void adjust_update(void)
             }
 
             default:
-                fprintf(stderr,
-                        "Error: unhandled "
-                        "adjust type: %u\n",
-                        e.type);
+                fprintf(stderr, "Error: unhandled adjust type: %u\n", e.type);
                 fclose(file);
                 exit(1);
             }
