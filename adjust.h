@@ -295,12 +295,13 @@ static size_t _da_priority_insert(void **da, const size_t priority,
                                   int (*compare)(const void *, const size_t))
 {
     size_t i, insert_index;
-    insert_index = 1;
 
+    _da_ensure_capacity(da, 1);
     _DA_Header *h = ((_DA_Header *)(*da) - 1);
     char *bytes = (char *)(*da);
 
-    _da_ensure_capacity(da, 1);
+    insert_index = h->length;
+
     for (i = 0; i < h->length; ++i)
     {
         if (compare(bytes + (i * h->item_size), priority) > 0)
@@ -312,7 +313,6 @@ static size_t _da_priority_insert(void **da, const size_t priority,
 
     if (insert_index < h->length)
     {
-        printf("Moving data!\n");
         memmove(bytes + ((insert_index + 1) * h->item_size),
                 bytes + (insert_index * h->item_size),
                 (h->length - insert_index) * h->item_size);
@@ -444,8 +444,6 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
     {
         i = _da_priority_insert((void **)&_files[file_index].adjustables,
                                 line_number, _adjust_priority_compare);
-
-        printf("priority: %lu\n", i);
 
         adjustables = _files[file_index].adjustables;
         adjustables[i].type = type;
@@ -841,10 +839,7 @@ static void adjust_update(void)
             {
                 if (sscanf(value_start, "%f", (float *)e.data) != 1)
                 {
-                    fprintf(stderr,
-                            "Error: failed to "
-                            "parse float: "
-                            "%s:%lu\n",
+                    fprintf(stderr, "Error: failed to parse float: %s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
@@ -857,10 +852,7 @@ static void adjust_update(void)
             {
                 if (sscanf(value_start, "%i", (int *)e.data) != 1)
                 {
-                    fprintf(stderr,
-                            "Error, failed to "
-                            "parse int: "
-                            "%s:%lu\n",
+                    fprintf(stderr, "Error, failed to parse int: %s:%lu\n",
                             af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
@@ -885,12 +877,10 @@ static void adjust_update(void)
                 }
                 else
                 {
-                    fprintf(stderr,
-                            "Error: failed to "
-                            "parse bool (true "
-                            "or false): "
-                            "%s:%lu\n",
-                            af.file_name, e.line_number);
+                    fprintf(
+                        stderr,
+                        "Error: failed to parse bool (true or false): %s:%lu\n",
+                        af.file_name, e.line_number);
                     fclose(file);
                     exit(1);
                 }
