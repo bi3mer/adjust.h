@@ -512,8 +512,7 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
                                     const char *file_name,
                                     const char *global_name)
 {
-    // TODO: Why do I need to read a file on every register? I don't know why I
-    //       care about the name of the global variable.
+    // Make sure the global exists while finding the correct line number
     FILE *file;
     char buffer[256];
     size_t line_number;
@@ -597,7 +596,7 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
         const char *_temp = name;                                              \
         size_t _len = strlen(_temp) + 1;                                       \
         name = malloc(sizeof(char) * _len);                                    \
-        memcpy(name, _temp, _len);                                             \
+        strcpy(name, _temp);                                                   \
         _adjust_register_global(&name, _ADJUST_STRING, __FILE__, #name);       \
     } while (0)
 
@@ -1046,6 +1045,7 @@ static void adjust_cleanup(void)
     _ADJUST_ENTRY *adjustables;
     size_t i, j, num_adjustables;
     const size_t length = _da_length(_files);
+
     for (i = 0; i < length; ++i)
     {
         adjustables = _files[i].adjustables;
@@ -1054,8 +1054,17 @@ static void adjust_cleanup(void)
         {
             if (adjustables[i].should_cleanup)
             {
-                free(adjustables[i].data);
-                adjustables[i].data = NULL;
+                if (adjustables[i].type == _ADJUST_STRING)
+                {
+                    char **string_ptr = (char **)adjustables[j].data;
+                    free(*string_ptr);
+                    *string_ptr = NULL;
+                }
+                else
+                {
+                    free(adjustables[i].data);
+                    adjustables[i].data = NULL;
+                }
             }
         }
 
