@@ -201,18 +201,6 @@ typedef int bool;
 #define ADJUST_VAR_FLOAT(name, val) float name = val
 #define ADJUST_VAR_STRING(name, val) char *name = val
 
-#define ADJUST_GLOBAL_CONST_BOOL(name, val) const float name = val
-#define ADJUST_GLOBAL_CONST_CHAR(name, val) const float name = val
-#define ADJUST_GLOBAL_CONST_INT(name, val) const float name = val
-#define ADJUST_GLOBAL_CONST_FLOAT(name, val) const float name = val
-#define ADJUST_GLOBAL_CONST_STING(name, val) const float name = val
-
-#define ADJUST_GLOBAL_VAR_BOOL(name, val) float name = val
-#define ADJUST_GLOBAL_VAR_CHAR(name, val) float name = val
-#define ADJUST_GLOBAL_VAR_INT(name, val) float name = val
-#define ADJUST_GLOBAL_VAR_FLOAT(name, val) float name = val
-#define ADJUST_GLOBAL_VAR_STING(name, val) float name = val
-
 #define adjust_register_global_bool(name) ()
 #define adjust_register_global_char(name) ()
 #define adjust_register_global_float(name) ()
