@@ -22,7 +22,7 @@ SOFTWARE.
 #ifndef __ADJUST__
 #define __ADJUST__
 /******************************************************************************
- * Documentation:
+ * ====================== Documentation ======================
  *
  * adjust.h is a C99 single header library that lets you adjust values in your
  * code while your application is running.
@@ -85,7 +85,7 @@ SOFTWARE.
  * an issue if something doesn't work for you. Also, see the examples directory
  * to see how adjust.h can be used.
  *
- * Todo:
+ * ====================== Todo ======================
  *
  * - [ ] I shouldn't need two separate approaches for temp variables and main
  *       variables. Just malloc and make the interface way easier to work with.
@@ -140,7 +140,7 @@ SOFTWARE.
  *       adjust_register_global_int(g_a);
  *       ```
  *
- * FAQ:
+ * ====================== FAQ ======================
  *
  *  --> Did you come up with the idea behind adjust.h?
  *
@@ -160,6 +160,11 @@ SOFTWARE.
  *  function to register said variable with Adjust. To do that, I needed at
  *  least C99. I'm sure that there is another approach that I haven't thought
  *  of, yet.
+ *
+ * ====================== Contributors ======================
+ * - Colan Biemer (bi3mer)
+ * - gouwsxander
+ *
  ******************************************************************************/
 
 /******************************************************************************/
