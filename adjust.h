@@ -121,6 +121,15 @@ SOFTWARE.
  *       that, in a GUI option, the developer will be able to see something like
  *       "INFO: adjust.h loaded GRAVITY" or "Error: formatting error with..."
  *
+ * - [ ] adjust.h breaks on update if the user has malformed code. I don't think
+ *       that this is the best decision. Instead, the behavior shoudl be that it
+ *       logs the error and then keeps going if there are other files to update.
+ *       Essentially, I don't think adjust.h should break and end the users
+ *       program if they mistakenly pressed save before being done editting
+ *       their code.
+ *
+ * - [ ] Support multi-line string parsing
+ *
  * - [ ] I need to test with a tool like Valgrind to make sure that I don't
  *       have any memory leaks.
  *
