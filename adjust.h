@@ -1044,36 +1044,45 @@ static void adjust_update(void)
 
 static void adjust_cleanup(void)
 {
+    if (!_files) return;
+
     _ADJUST_ENTRY *adjustables;
     size_t i, j, num_adjustables;
     const size_t length = _da_length(_files);
 
+    // i will loop through each FILES
     for (i = 0; i < length; ++i)
     {
         adjustables = _files[i].adjustables;
         num_adjustables = _da_length(_files[i].adjustables);
+        // j will loop through each ENTRIES in each files
         for (j = 0; j < num_adjustables; ++j)
         {
-            if (adjustables[i].should_cleanup)
+            if (adjustables[j].should_cleanup)
             {
                 if (adjustables[j].type == _ADJUST_STRING)
                 {
                     char **string_ptr = (char **)adjustables[j].data;
-                    free(*string_ptr);
-                    *string_ptr = NULL;
+                    if (string_ptr && *string_ptr) {
+                        free(*string_ptr);
+                        *string_ptr = NULL;
+                    }
+                    free(string_ptr);
                 }
                 else
                 {
-                    free(adjustables[i].data);
-                    adjustables[i].data = NULL;
+                    free(adjustables[j].data);
                 }
+                adjustables[j].data = NULL;
             }
         }
 
         _da_free(adjustables);
+        _files[i].adjustables = NULL;
     }
 
     _da_free(_files);
+    _files = NULL;
 }
 #endif
 
