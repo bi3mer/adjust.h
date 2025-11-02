@@ -40,7 +40,7 @@ int main(void)
 
     Vector2 ballPosition = {GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f};
     Vector2 ballSpeed = {5.0f, 4.0f};
-    ADJUST_CONST_INT(ballRadius, 50);  // m
+    ADJUST_CONST_INT(ballRadius, 10);  // m
     ADJUST_CONST_FLOAT(gravity, 0.2f); // m
 
     bool useGravity = true;
