@@ -1056,7 +1056,7 @@ static void adjust_cleanup(void)
         {
             if (adjustables[i].should_cleanup)
             {
-                if (adjustables[i].type == _ADJUST_STRING)
+                if (adjustables[j].type == _ADJUST_STRING)
                 {
                     char **string_ptr = (char **)adjustables[j].data;
                     free(*string_ptr);
