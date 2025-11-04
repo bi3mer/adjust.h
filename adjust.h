@@ -174,7 +174,6 @@ SOFTWARE.
  * - Colan Biemer (bi3mer)
  * - gouwsxander
  * - vatsanant (Peanut)
- *
  * - NKONO NDEME Miguel (miguelnkono)
  *
  ******************************************************************************/
