@@ -216,11 +216,11 @@ typedef int bool;
 #define ADJUST_VAR_FLOAT(name, val) float name = val
 #define ADJUST_VAR_STRING(name, val) char *name = val
 
-#define adjust_register_global_bool(name) (void)0
-#define adjust_register_global_char(name) (void)0
-#define adjust_register_global_float(name) (void)0
-#define adjust_register_global_int(name) (void)0
-#define adjust_register_global_string(name) (void)0
+#define adjust_register_global_bool(name) ((void)0)
+#define adjust_register_global_char(name) ((void)0)
+#define adjust_register_global_float(name) ((void)0)
+#define adjust_register_global_int(name) ((void)0)
+#define adjust_register_global_string(name) ((void)0)
 
 #define ADJUST_BOOL(v) (v)
 #define ADJUST_CHAR(v) (v)
@@ -228,10 +228,10 @@ typedef int bool;
 #define ADJUST_FLOAT(v) (v)
 #define ADJUST_STRING(v) (v)
 
-#define adjust_init() (void)0
-#define adjust_update() (void)0
-#define adjust_update_file() (void)0
-#define adjust_cleanup() (void)0
+#define adjust_init() ((void)0)
+#define adjust_update() ((void)0)
+#define adjust_update_file() ((void)0)
+#define adjust_cleanup() ((void)0)
 
 #else
 /* In debug mode the user can adjust everything */
