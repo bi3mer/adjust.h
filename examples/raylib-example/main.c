@@ -33,7 +33,6 @@ int main(void)
     adjust_init(); // m
     const int screenWidth = 800;
     const int screenHeight = 450;
-//    ADJUST_CONST_INT(screenHeight, 100);
 
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(screenWidth, screenHeight,
@@ -42,7 +41,7 @@ int main(void)
     Vector2 ballPosition = {GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f};
     Vector2 ballSpeed = {5.0f, 4.0f};
     ADJUST_CONST_INT(ballRadius, 10);  // m
-    ADJUST_CONST_FLOAT(gravity, 0.3f); // m
+    ADJUST_CONST_FLOAT(gravity, 0.2f); // m
 
     bool useGravity = true;
     bool pause = 0;
