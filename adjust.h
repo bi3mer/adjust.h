@@ -173,6 +173,8 @@ SOFTWARE.
  * ====================== Contributors ======================
  * - Colan Biemer (bi3mer)
  * - gouwsxander
+ * - vatsanant (Peanut)
+ *
  * - NKONO NDEME Miguel (miguelnkono)
  *
  ******************************************************************************/
@@ -322,7 +324,7 @@ static size_t _da_priority_insert(void **da, const size_t priority,
 {
     size_t i, insert_index;
 
-    _da_ensure_capacity(da, 1); // we grow the array by one.
+    _da_ensure_capacity(da, 1);
     _DA_Header *h = ((_DA_Header *)(*da) - 1);
     char *bytes = (char *)(*da);
 
@@ -450,7 +452,7 @@ typedef struct _ADJUST_FILE
 _ADJUST_FILE *_files;
 
 /* helper for comparing priority of _ADJUST_ENTRY entries. Note, though that
- * this will fail if line_number is greater than INT_MAX */
+ * this will faill if line_number is greater than INT_MAX */
 static inline int _adjust_priority_compare(const void *element,
                                            const size_t priority)
 {
@@ -1108,7 +1110,7 @@ static void adjust_cleanup(void)
         {
             if (adjustables[i].should_cleanup)
             {
-                if (adjustables[j].type == _ADJUST_STRING)
+                if (adjustables[i].type == _ADJUST_STRING)
                 {
                     char **string_ptr = (char **)adjustables[j].data;
                     free(*string_ptr);
