@@ -5,7 +5,7 @@ int main(void)
 {
     adjust_init();
     ADJUST_CONST_INT(a, 0);
-    ADJUST_VAR_INT(b, 0);
+    ADJUST_VAR_INT(b, 20);
 
     for (size_t countdown = 5; countdown > 0; countdown--)
     {

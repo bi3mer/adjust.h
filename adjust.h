@@ -174,6 +174,7 @@ SOFTWARE.
  * - Colan Biemer (bi3mer)
  * - gouwsxander
  * - vatsanant (Peanut)
+ * - NKONO NDEME Miguel (miguelnkono)
  * - birds3345
  *
  ******************************************************************************/
@@ -350,7 +351,6 @@ static inline void _da_free(void *da)
 
 /******************************************************************************/
 /**************** Adjust ****************/
-/* Structs and global state with _files */
 typedef enum
 {
     _ADJUST_FLOAT = 0,
@@ -399,8 +399,6 @@ typedef struct _ADJUST_FILE
 
 _ADJUST_FILE *_files;
 
-/* helper for comparing priority of _ADJUST_ENTRY entries. Note, though that
- * this will faill if line_number is greater than INT_MAX */
 static inline int _adjust_priority_compare(const void *element,
                                            const size_t priority)
 {
@@ -409,7 +407,6 @@ static inline int _adjust_priority_compare(const void *element,
     return (int)ae->line_number - (int)priority;
 }
 
-/* Declarations for long-lived adjustable data */
 static void _adjust_register(void *val, _ADJUST_TYPE type,
                              const char *file_name, const size_t line_number)
 {
@@ -1046,14 +1043,19 @@ static void adjust_update(void)
 
 static void adjust_cleanup(void)
 {
+    if (!_files) return;
+
     _ADJUST_ENTRY *adjustables;
     size_t i, j, num_adjustables;
     const size_t length = _da_length(_files);
 
     for (i = 0; i < length; ++i)
     {
+        if (!_files[i].adjustables) continue;
+
         adjustables = _files[i].adjustables;
         num_adjustables = _da_length(_files[i].adjustables);
+
         for (j = 0; j < num_adjustables; ++j)
         {
             if (adjustables[j].should_cleanup)
@@ -1061,21 +1063,28 @@ static void adjust_cleanup(void)
                 if (adjustables[j].type == _ADJUST_STRING)
                 {
                     char **string_ptr = (char **)adjustables[j].data;
-                    free(*string_ptr);
-                    *string_ptr = NULL;
+                    if (string_ptr && *string_ptr) {
+                        free(*string_ptr);
+                        *string_ptr = NULL;
+                    }
+                    free(string_ptr);
                 }
                 else
                 {
-                    free(adjustables[j].data);
-                    adjustables[j].data = NULL;
+                    if (adjustables[j].data) {
+                        free(adjustables[j].data);
+                    }
                 }
+                adjustables[j].data = NULL;
             }
         }
 
         _da_free(adjustables);
+        _files[i].adjustables = NULL;
     }
 
     _da_free(_files);
+    _files = NULL;
 }
 #endif
 
