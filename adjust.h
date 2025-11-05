@@ -1070,7 +1070,6 @@ static void adjust_cleanup(void)
                         free(*string_ptr);
                         *string_ptr = NULL;
                     }
-                    free(string_ptr);
                 }
                 else
                 {
