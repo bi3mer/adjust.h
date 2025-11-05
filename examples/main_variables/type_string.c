@@ -5,7 +5,7 @@ int main(void)
 {
     adjust_init();
     ADJUST_CONST_STRING(a, "\"adjust.h\" can ignore annoying '\"' \t marks!\n");
-    ADJUST_VAR_STRING(b, "To infinity... and beyond!");
+    ADJUST_VAR_STRING(b, "Tok infinity... and beyond!");
 
     for (size_t countdown = 5; countdown > 0; countdown--)
     {

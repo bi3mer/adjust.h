@@ -173,6 +173,8 @@ SOFTWARE.
  * ====================== Contributors ======================
  * - Colan Biemer (bi3mer)
  * - gouwsxander
+ * - vatsanant (Peanut)
+ * - NKONO NDEME Miguel (miguelnkono)
  *
  ******************************************************************************/
 
@@ -397,8 +399,6 @@ typedef struct _ADJUST_FILE
 
 _ADJUST_FILE *_files;
 
-/* helper for comparing priority of _ADJUST_ENTRY entries. Note, though that
- * this will faill if line_number is greater than INT_MAX */
 static inline int _adjust_priority_compare(const void *element,
                                            const size_t priority)
 {
@@ -1050,12 +1050,10 @@ static void adjust_cleanup(void)
     size_t i, j, num_adjustables;
     const size_t length = _da_length(_files);
 
-    // i will loop through each FILES
     for (i = 0; i < length; ++i)
     {
         adjustables = _files[i].adjustables;
         num_adjustables = _da_length(_files[i].adjustables);
-        // j will loop through each ENTRIES in each files
         for (j = 0; j < num_adjustables; ++j)
         {
             if (adjustables[j].should_cleanup)
