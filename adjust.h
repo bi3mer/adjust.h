@@ -242,9 +242,6 @@ typedef int bool;
 
 /******************************************************************************/
 /* Generic Dynamic Array, not built for outside use */
-/*
- * Dynamic Array structure which consist of a meta-data block followed by the element of the
- * dynamic array.*/
 typedef struct _DA_Header
 {
     size_t length;
@@ -252,14 +249,6 @@ typedef struct _DA_Header
     size_t item_size;
 } _DA_Header;
 
-/*
- * Initialization of the dynamic array by allocating enough memory to hold the meta-data plus the elements in
- * the array. The meta-data gives information like the length of the array, its capacity and the size of one
- * element in the array.
- * @param item_size which represent the size of one element in the array.
- * @param capacity which represent the capacity of the entire array(how much element the array can initially hold.
- * @return a pointer to the dynamic array. The next block of memory right after the meta-data.
- * */
 static void *_da_init(const size_t item_size, const size_t capacity)
 {
     void *ptr = 0;
@@ -282,11 +271,6 @@ static void *_da_init(const size_t item_size, const size_t capacity)
     return ptr;
 }
 
-/*
- * Ensure that there still enough capacity left to receive a new set of data.
- * @param da which represent a pointer to the dynamic array.
- * @param capacity which represent the capacity we're hopping it remains.
- * */
 static void _da_ensure_capacity(void **da, const size_t capacity_increase)
 {
     _DA_Header *h = ((_DA_Header *)(*da) - 1);
@@ -311,13 +295,6 @@ static void _da_ensure_capacity(void **da, const size_t capacity_increase)
     }
 }
 
-/*
- * Inserting elements into the array by keeping the order.
- * @param da which represent a pointer to the dynamic array.
- * @param priority which represent the priority of the element we're inserting.
- * @param compare which represent the function that will determine where the element will be inserted.
- * @return will return the index in where the element will be inserted in the array.
- * */
 static size_t _da_priority_insert(void **da, const size_t priority,
                                   int (*compare)(const void *, const size_t))
 {
@@ -329,7 +306,6 @@ static size_t _da_priority_insert(void **da, const size_t priority,
 
     insert_index = h->length;
 
-    // find the index where we will insert the element.
     for (i = 0; i < h->length; ++i)
     {
         if (compare(bytes + (i * h->item_size), priority) > 0)
@@ -339,7 +315,6 @@ static size_t _da_priority_insert(void **da, const size_t priority,
         }
     }
 
-    // if we found an index in the already taken place then we make a place for the new element.
     if (insert_index < h->length)
     {
         memmove(bytes + ((insert_index + 1) * h->item_size),
@@ -352,19 +327,11 @@ static size_t _da_priority_insert(void **da, const size_t priority,
     return insert_index;
 }
 
-/*
- * Get the length of the dynamic array.
- * @param da which represent the dynamic array.
- * */
 static inline size_t _da_length(const void *da)
 {
     return da ? ((const _DA_Header *)da - 1)->length : 0;
 }
 
-/*
- * Increment the length of the array.
- * @param da which represent the dynamic array.
- * */
 static inline void _da_increment_length(void *da)
 {
     if (da)
@@ -373,9 +340,6 @@ static inline void _da_increment_length(void *da)
     }
 }
 
-/*
- * Delete all the memory used by the dynamic array.
- * */
 static inline void _da_free(void *da)
 {
     if (da)
@@ -386,11 +350,6 @@ static inline void _da_free(void *da)
 
 /******************************************************************************/
 /**************** Adjust ****************/
-/* Structs and global state with _files */
-/*
- * The type of adjustment.
- * Simply put, in what object hot reload is supported.
- * */
 typedef enum
 {
     _ADJUST_FLOAT = 0,
@@ -400,11 +359,6 @@ typedef enum
     _ADJUST_STRING
 } _ADJUST_TYPE;
 
-/*
- * Helper function to get the size of the adjustable objects.
- * @param t which represent the adjustable object.
- * @return the size of that adjustable.
- * */
 static inline size_t _adjust_type_to_size(const _ADJUST_TYPE t)
 {
     switch (t)
@@ -428,9 +382,6 @@ static inline size_t _adjust_type_to_size(const _ADJUST_TYPE t)
     }
 }
 
-/*
- * Information about the object that will be hot-reloaded.
- * */
 typedef struct _ADJUST_ENTRY
 {
     _ADJUST_TYPE type;
@@ -439,9 +390,6 @@ typedef struct _ADJUST_ENTRY
     void *data;
 } _ADJUST_ENTRY;
 
-/*
- * Information about the file that will be hot-reloaded.
- * */
 typedef struct _ADJUST_FILE
 {
     const char *file_name;
@@ -458,7 +406,6 @@ static inline int _adjust_priority_compare(const void *element,
     return (int)ae->line_number - (int)priority;
 }
 
-/* Declarations for long-lived adjustable data */
 static void _adjust_register(void *val, _ADJUST_TYPE type,
                              const char *file_name, const size_t line_number)
 {
@@ -1103,13 +1050,16 @@ static void adjust_cleanup(void)
 
     for (i = 0; i < length; ++i)
     {
+        if (!_files[i].adjustables) continue;
+
         adjustables = _files[i].adjustables;
         num_adjustables = _da_length(_files[i].adjustables);
+
         for (j = 0; j < num_adjustables; ++j)
         {
-            if (adjustables[i].should_cleanup)
+            if (adjustables[j].should_cleanup)
             {
-                if (adjustables[i].type == _ADJUST_STRING)
+                if (adjustables[j].type == _ADJUST_STRING)
                 {
                     char **string_ptr = (char **)adjustables[j].data;
                     if (string_ptr && *string_ptr) {
@@ -1120,7 +1070,9 @@ static void adjust_cleanup(void)
                 }
                 else
                 {
-                    free(adjustables[j].data);
+                    if (adjustables[j].data) {
+                        free(adjustables[j].data);
+                    }
                 }
                 adjustables[j].data = NULL;
             }
