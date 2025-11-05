@@ -759,15 +759,10 @@ static void adjust_update(void)
         struct stat fs;
         int success = stat(af.file_name, &fs);
         if (success == 0) {
-            //printf("Last Modified: %ld\n", fs.st_mtime);
-            //printf("saved: %ld\n", af.lastupdate);
-
             if (fs.st_mtime == af.lastupdate) {
-                //printf("no modification needed\n");
                 break;
             }
             else {
-                //printf("update file\n");
                 _files[file_index].lastupdate = fs.st_mtime;
             }
         }
