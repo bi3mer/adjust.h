@@ -22,5 +22,5 @@ a.out
 .cache
 bouncing-ball
 build
-
+.vscode
 build_*

@@ -239,6 +239,8 @@ typedef int bool;
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 /******************************************************************************/
 /* Generic Dynamic Array, not built for outside use */
@@ -395,6 +397,7 @@ typedef struct _ADJUST_FILE
 {
     const char *file_name;
     _ADJUST_ENTRY *adjustables;
+    time_t lastupdate; 
 } _ADJUST_FILE;
 
 _ADJUST_FILE *_files;
@@ -433,6 +436,13 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
         _da_increment_length(_files);
 
         _files[file_index].file_name = file_name;
+        
+        struct stat fs;
+        int success = stat(file_name, &fs);
+        if (success == 0) {
+            _files[file_index].lastupdate = fs.st_mtime;
+        }
+
         _files[file_index].adjustables =
             (_ADJUST_ENTRY *)_da_init(sizeof(_ADJUST_ENTRY), 4);
 
@@ -621,6 +631,14 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
             continue;
         }
 
+        struct stat fs;
+        int success = stat(file_name, &fs);
+        if (success == 0) {
+            if(af.lastupdate != fs.st_mtime) {
+                _files[file_index].lastupdate = fs.st_mtime;
+            }   
+        }
+
         // find data if available
         adjustables = af.adjustables;
         const size_t length = _da_length(adjustables);
@@ -669,6 +687,13 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
         _files[file_index].adjustables =
             (_ADJUST_ENTRY *)_da_init(sizeof(_ADJUST_ENTRY), 4);
 
+        struct stat fs;
+        int success = stat(file_name, &fs);
+        if (success == 0) {
+            _files[file_index].lastupdate = fs.st_mtime;
+        }
+
+            
         adjustables = _files[file_index].adjustables;
         adjustables[0].type = type;
         adjustables[0].line_number = line_number;
@@ -753,6 +778,22 @@ static void adjust_update(void)
         {
             fprintf(stderr, "Error: unable to open file: %s\n", af.file_name);
             exit(1);
+        }
+
+        struct stat fs;
+        int success = stat(af.file_name, &fs);
+        if (success == 0) {
+            //printf("Last Modified: %ld\n", fs.st_mtime);
+            //printf("saved: %ld\n", af.lastupdate);
+
+            if (fs.st_mtime == af.lastupdate) {
+                //printf("no modification needed\n");
+                break;
+            }
+            else {
+                //printf("update file\n");
+                _files[file_index].lastupdate = fs.st_mtime;
+            }
         }
 
         data_length = _da_length(af.adjustables);
