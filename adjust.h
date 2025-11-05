@@ -1043,7 +1043,8 @@ static void adjust_update(void)
 
 static void adjust_cleanup(void)
 {
-    if (!_files) return;
+    if (!_files)
+        return;
 
     _ADJUST_ENTRY *adjustables;
     size_t i, j, num_adjustables;
@@ -1051,7 +1052,8 @@ static void adjust_cleanup(void)
 
     for (i = 0; i < length; ++i)
     {
-        if (!_files[i].adjustables) continue;
+        if (!_files[i].adjustables)
+            continue;
 
         adjustables = _files[i].adjustables;
         num_adjustables = _da_length(_files[i].adjustables);
@@ -1063,7 +1065,8 @@ static void adjust_cleanup(void)
                 if (adjustables[j].type == _ADJUST_STRING)
                 {
                     char **string_ptr = (char **)adjustables[j].data;
-                    if (string_ptr && *string_ptr) {
+                    if (string_ptr && *string_ptr)
+                    {
                         free(*string_ptr);
                         *string_ptr = NULL;
                     }
@@ -1071,7 +1074,8 @@ static void adjust_cleanup(void)
                 }
                 else
                 {
-                    if (adjustables[j].data) {
+                    if (adjustables[j].data)
+                    {
                         free(adjustables[j].data);
                     }
                 }
