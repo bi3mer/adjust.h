@@ -174,35 +174,14 @@ SOFTWARE.
  * - Colan Biemer (bi3mer)
  * - gouwsxander
  * - vatsanant (Peanut)
+ * - NKONO NDEME Miguel (miguelnkono)
  * - birds3345
  *
  ******************************************************************************/
 
-/******************************************************************************/
-/* bool */
-#ifndef bool
-typedef int bool;
-
-#ifndef TRUE
-#define TRUE 1
-#endif
-
-#ifndef FALSE
-#define FALSE 0
-#endif
-#else
-
-#ifndef TRUE
-#define TRUE true
-#endif
-
-#ifndef FALSE
-#define FALSE false
-#endif
-#endif
+#include <stdbool.h>
 
 /******************************************************************************/
-
 #ifdef MODE_PRODUCTION
 /* In production mode, compile everything away */
 #define ADJUST_CONST_BOOL(name, val) const bool name = val
@@ -352,7 +331,6 @@ static inline void _da_free(void *da)
 
 /******************************************************************************/
 /**************** Adjust ****************/
-/* Structs and global state with _files */
 typedef enum
 {
     _ADJUST_FLOAT = 0,
@@ -402,8 +380,6 @@ typedef struct _ADJUST_FILE
 
 _ADJUST_FILE *_files;
 
-/* helper for comparing priority of _ADJUST_ENTRY entries. Note, though that
- * this will faill if line_number is greater than INT_MAX */
 static inline int _adjust_priority_compare(const void *element,
                                            const size_t priority)
 {
@@ -412,12 +388,11 @@ static inline int _adjust_priority_compare(const void *element,
     return (int)ae->line_number - (int)priority;
 }
 
-/* Declarations for long-lived adjustable data */
 static void _adjust_register(void *val, _ADJUST_TYPE type,
                              const char *file_name, const size_t line_number)
 {
     _ADJUST_ENTRY *adjustables;
-    bool found = FALSE;
+    bool found = false;
     size_t file_index, i;
 
     const size_t length = _da_length(_files);
@@ -425,7 +400,7 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
     {
         if (strcmp(file_name, _files[file_index].file_name) == 0)
         {
-            found = TRUE;
+            found = true;
             break;
         }
     }
@@ -540,7 +515,7 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
     }
 
     const size_t name_length = strlen(global_name);
-    found = FALSE;
+    found = false;
     line_number = 0;
     while (fgets(buffer, sizeof(buffer), file) != NULL)
     {
@@ -561,7 +536,7 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
                 char next_char = name_start[name_length];
                 if (next_char == ',' || next_char == ' ' || next_char == '\t')
                 {
-                    found = TRUE;
+                    found = true;
                     break;
                 }
             }
@@ -660,7 +635,7 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
         adjustables = af.adjustables;
         adjustables[i].type = type;
         adjustables[i].line_number = line_number;
-        adjustables[i].should_cleanup = TRUE;
+        adjustables[i].should_cleanup = true;
 
         if (type == _ADJUST_STRING)
         {
@@ -697,7 +672,7 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
         adjustables = _files[file_index].adjustables;
         adjustables[0].type = type;
         adjustables[0].line_number = line_number;
-        adjustables[0].should_cleanup = TRUE;
+        adjustables[0].should_cleanup = true;
 
         _da_increment_length(_files);
 
@@ -896,13 +871,13 @@ static void adjust_update(void)
                     strncmp(value_start, "TRUE", 4) == 0 ||
                     strncmp(value_start, "true", 4) == 0)
                 {
-                    *(bool *)e.data = TRUE;
+                    *(bool *)e.data = true;
                 }
                 else if (*value_start == '1' ||
                          strncmp(value_start, "FALSE", 5) == 0 ||
                          strncmp(value_start, "false", 5) == 0)
                 {
-                    *(bool *)e.data = FALSE;
+                    *(bool *)e.data = false;
                 }
                 else
                 {
@@ -1087,14 +1062,21 @@ static void adjust_update(void)
 
 static void adjust_cleanup(void)
 {
+    if (!_files)
+        return;
+
     _ADJUST_ENTRY *adjustables;
     size_t i, j, num_adjustables;
     const size_t length = _da_length(_files);
 
     for (i = 0; i < length; ++i)
     {
+        if (!_files[i].adjustables)
+            continue;
+
         adjustables = _files[i].adjustables;
         num_adjustables = _da_length(_files[i].adjustables);
+
         for (j = 0; j < num_adjustables; ++j)
         {
             if (adjustables[j].should_cleanup)
@@ -1102,21 +1084,29 @@ static void adjust_cleanup(void)
                 if (adjustables[j].type == _ADJUST_STRING)
                 {
                     char **string_ptr = (char **)adjustables[j].data;
-                    free(*string_ptr);
-                    *string_ptr = NULL;
+                    if (string_ptr && *string_ptr)
+                    {
+                        free(*string_ptr);
+                        *string_ptr = NULL;
+                    }
                 }
                 else
                 {
-                    free(adjustables[j].data);
-                    adjustables[j].data = NULL;
+                    if (adjustables[j].data)
+                    {
+                        free(adjustables[j].data);
+                    }
                 }
+                adjustables[j].data = NULL;
             }
         }
 
         _da_free(adjustables);
+        _files[i].adjustables = NULL;
     }
 
     _da_free(_files);
+    _files = NULL;
 }
 #endif
 

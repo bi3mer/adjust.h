@@ -4,7 +4,7 @@
 
 bool get_bool(void)
 {
-    return ADJUST_BOOL(TRUE);
+    return ADJUST_BOOL(true);
 }
 
 int main(void)
