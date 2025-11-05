@@ -736,9 +736,16 @@ static void adjust_update(void)
             fprintf(stderr, "Error: unable to open file: %s\n", af.file_name);
             exit(1);
         }
-
-        struct stat fs;
-        if (stat(af.file_name, &fs) == 0) 
+        
+        #ifdef _WIN32
+            struct _stat fs;
+            int result = _stat(af.file_name, &fs);
+        #else
+            struct stat fs;
+            int result = stat(af.file_name, &fs);
+        #endif
+        
+        if (result == 0) 
         {
             if (fs.st_mtime == af.lastupdate) 
             {
