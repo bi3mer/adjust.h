@@ -415,7 +415,8 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
         
         struct stat fs;
         int success = stat(file_name, &fs);
-        if (success == 0) {
+        if (success == 0) 
+        {
             _files[file_index].lastupdate = fs.st_mtime;
         }
 
@@ -610,7 +611,8 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
         struct stat fs;
         int success = stat(file_name, &fs);
         if (success == 0) {
-            if(af.lastupdate != fs.st_mtime) {
+            if(af.lastupdate != fs.st_mtime) 
+            {
                 _files[file_index].lastupdate = fs.st_mtime;
             }   
         }
@@ -665,7 +667,8 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
 
         struct stat fs;
         int success = stat(file_name, &fs);
-        if (success == 0) {
+        if (success == 0) 
+        {
             _files[file_index].lastupdate = fs.st_mtime;
         }
 
@@ -758,11 +761,14 @@ static void adjust_update(void)
 
         struct stat fs;
         int success = stat(af.file_name, &fs);
-        if (success == 0) {
-            if (fs.st_mtime == af.lastupdate) {
+        if (success == 0) 
+        {
+            if (fs.st_mtime == af.lastupdate) 
+            {
                 break;
             }
-            else {
+            else 
+            {
                 _files[file_index].lastupdate = fs.st_mtime;
             }
         }
