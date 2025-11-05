@@ -666,8 +666,7 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
             (_ADJUST_ENTRY *)_da_init(sizeof(_ADJUST_ENTRY), 4);
 
         struct stat fs;
-        int success = stat(file_name, &fs);
-        if (success == 0) 
+        if (stat(file_name, &fs) == 0) 
         {
             _files[file_index].lastupdate = fs.st_mtime;
         }
@@ -760,8 +759,7 @@ static void adjust_update(void)
         }
 
         struct stat fs;
-        int success = stat(af.file_name, &fs);
-        if (success == 0) 
+        if (stat(af.file_name, &fs) == 0) 
         {
             if (fs.st_mtime == af.lastupdate) 
             {
