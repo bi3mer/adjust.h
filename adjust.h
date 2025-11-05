@@ -412,14 +412,7 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
         _da_increment_length(_files);
 
         _files[file_index].file_name = file_name;
-        
-        struct stat fs;
-        int success = stat(file_name, &fs);
-        if (success == 0) 
-        {
-            _files[file_index].lastupdate = fs.st_mtime;
-        }
-
+        _files[file_index].lastupdate = 0;
         _files[file_index].adjustables =
             (_ADJUST_ENTRY *)_da_init(sizeof(_ADJUST_ENTRY), 4);
 
@@ -608,15 +601,6 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
             continue;
         }
 
-        struct stat fs;
-        int success = stat(file_name, &fs);
-        if (success == 0) {
-            if(af.lastupdate != fs.st_mtime) 
-            {
-                _files[file_index].lastupdate = fs.st_mtime;
-            }   
-        }
-
         // find data if available
         adjustables = af.adjustables;
         const size_t length = _da_length(adjustables);
@@ -631,6 +615,7 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
                 break;
             }
         }
+
 
         i = _da_priority_insert((void **)&adjustables, line_number,
                                 _adjust_priority_compare);
@@ -664,14 +649,8 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
         _files[file_index].file_name = file_name;
         _files[file_index].adjustables =
             (_ADJUST_ENTRY *)_da_init(sizeof(_ADJUST_ENTRY), 4);
-
-        struct stat fs;
-        if (stat(file_name, &fs) == 0) 
-        {
-            _files[file_index].lastupdate = fs.st_mtime;
-        }
-
-            
+        _files[file_index].lastupdate = 0;
+        
         adjustables = _files[file_index].adjustables;
         adjustables[0].type = type;
         adjustables[0].line_number = line_number;
