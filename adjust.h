@@ -93,7 +93,7 @@ SOFTWARE.
  * - [ ] adjust_register_global_float could maybe use adjust_register_global
  *       typeof, and then fail on unsupported type
  *
- * - [ ] Store file modification times, and only re-read when necessary
+ * - [x] Store file modification times, and only re-read when necessary
  *
  * - [ ] I think if you do ADJUST_VAR_FLOAT(a, 2.0f) and then something
  *       like deregister_short, then everything could work. It means adding
@@ -175,6 +175,7 @@ SOFTWARE.
  * - gouwsxander
  * - vatsanant (Peanut)
  * - NKONO NDEME Miguel (miguelnkono)
+ * - Riccardo Modolo (RickSrick)
  * - birds3345
  *
  ******************************************************************************/
