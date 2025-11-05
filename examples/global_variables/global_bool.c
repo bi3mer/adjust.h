@@ -1,14 +1,14 @@
 #include "adjust.h"
 #include <unistd.h>
 
-ADJUST_GLOBAL_CONST_BOOL(toggle1, TRUE);
-ADJUST_GLOBAL_VAR_BOOL(toggle2, TRUE);
+ADJUST_GLOBAL_CONST_BOOL(toggle1, true);
+ADJUST_GLOBAL_VAR_BOOL(toggle2, true);
 
 int main(void)
 {
     adjust_init();
 
-    ADJUST_CONST_BOOL(before_globals, TRUE);
+    ADJUST_CONST_BOOL(before_globals, true);
 
     adjust_register_global_bool(toggle1);
     adjust_register_global_bool(toggle2);

@@ -4,8 +4,8 @@
 int main(void)
 {
     adjust_init();
-    ADJUST_CONST_BOOL(a, FALSE);
-    ADJUST_VAR_BOOL(b, FALSE);
+    ADJUST_CONST_BOOL(a, false);
+    ADJUST_VAR_BOOL(b, false);
 
     for (size_t countdown = 5; countdown > 0; countdown--)
     {

@@ -179,31 +179,9 @@ SOFTWARE.
  *
  ******************************************************************************/
 
-/******************************************************************************/
-/* bool */
-#ifndef bool
-typedef int bool;
-
-#ifndef TRUE
-#define TRUE 1
-#endif
-
-#ifndef FALSE
-#define FALSE 0
-#endif
-#else
-
-#ifndef TRUE
-#define TRUE true
-#endif
-
-#ifndef FALSE
-#define FALSE false
-#endif
-#endif
+#include <stdbool.h>
 
 /******************************************************************************/
-
 #ifdef MODE_PRODUCTION
 /* In production mode, compile everything away */
 #define ADJUST_CONST_BOOL(name, val) const bool name = val
@@ -411,7 +389,7 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
                              const char *file_name, const size_t line_number)
 {
     _ADJUST_ENTRY *adjustables;
-    bool found = FALSE;
+    bool found = false;
     size_t file_index, i;
 
     const size_t length = _da_length(_files);
@@ -419,7 +397,7 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
     {
         if (strcmp(file_name, _files[file_index].file_name) == 0)
         {
-            found = TRUE;
+            found = true;
             break;
         }
     }
@@ -527,7 +505,7 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
     }
 
     const size_t name_length = strlen(global_name);
-    found = FALSE;
+    found = false;
     line_number = 0;
     while (fgets(buffer, sizeof(buffer), file) != NULL)
     {
@@ -548,7 +526,7 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
                 char next_char = name_start[name_length];
                 if (next_char == ',' || next_char == ' ' || next_char == '\t')
                 {
-                    found = TRUE;
+                    found = true;
                     break;
                 }
             }
@@ -639,7 +617,7 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
         adjustables = af.adjustables;
         adjustables[i].type = type;
         adjustables[i].line_number = line_number;
-        adjustables[i].should_cleanup = TRUE;
+        adjustables[i].should_cleanup = true;
 
         if (type == _ADJUST_STRING)
         {
@@ -669,7 +647,7 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
         adjustables = _files[file_index].adjustables;
         adjustables[0].type = type;
         adjustables[0].line_number = line_number;
-        adjustables[0].should_cleanup = TRUE;
+        adjustables[0].should_cleanup = true;
 
         _da_increment_length(_files);
 
@@ -852,13 +830,13 @@ static void adjust_update(void)
                     strncmp(value_start, "TRUE", 4) == 0 ||
                     strncmp(value_start, "true", 4) == 0)
                 {
-                    *(bool *)e.data = TRUE;
+                    *(bool *)e.data = true;
                 }
                 else if (*value_start == '1' ||
                          strncmp(value_start, "FALSE", 5) == 0 ||
                          strncmp(value_start, "false", 5) == 0)
                 {
-                    *(bool *)e.data = FALSE;
+                    *(bool *)e.data = false;
                 }
                 else
                 {
