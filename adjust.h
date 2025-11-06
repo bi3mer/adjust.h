@@ -376,7 +376,7 @@ typedef struct _ADJUST_FILE
 {
     const char *file_name;
     _ADJUST_ENTRY *adjustables;
-    time_t lastupdate; 
+    time_t last_update; 
 } _ADJUST_FILE;
 
 _ADJUST_FILE *_files;
@@ -412,7 +412,7 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
         _da_increment_length(_files);
 
         _files[file_index].file_name = file_name;
-        _files[file_index].lastupdate = 0;
+        _files[file_index].last_update = 0;
         _files[file_index].adjustables =
             (_ADJUST_ENTRY *)_da_init(sizeof(_ADJUST_ENTRY), 4);
 
@@ -649,7 +649,7 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
         _files[file_index].file_name = file_name;
         _files[file_index].adjustables =
             (_ADJUST_ENTRY *)_da_init(sizeof(_ADJUST_ENTRY), 4);
-        _files[file_index].lastupdate = 0;
+        _files[file_index].last_update = 0;
         
         adjustables = _files[file_index].adjustables;
         adjustables[0].type = type;
@@ -747,14 +747,17 @@ static void adjust_update(void)
         
         if (result == 0) 
         {
-            if (fs.st_mtime == af.lastupdate) 
+            if (fs.st_mtime == af.last_update) 
             {
                 break;
             }
             else 
             {
-                _files[file_index].lastupdate = fs.st_mtime;
+                _files[file_index].last_update = fs.st_mtime;
             }
+        }
+        else {
+            fprintf(stderr, "Error: unable to retrieve file metadata: %s\n", af.file_name);
         }
 
         data_length = _da_length(af.adjustables);
