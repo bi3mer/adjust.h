@@ -56,14 +56,14 @@ int main(void)
     // Main game loop
     while (!WindowShouldClose()) // Detect window close button or ESC key
     {
+        adjust_update(); // m
+
         // Update
         //-----------------------------------------------------
         if (IsKeyPressed(KEY_G))
             useGravity = !useGravity;
         if (IsKeyPressed(KEY_SPACE))
             pause = !pause;
-        if (IsKeyPressed(KEY_R)) // m
-            adjust_update();     // m
 
         if (!pause)
         {
