@@ -729,8 +729,6 @@ static void adjust_update_file(const char *file_name)
         realpath(file_name, path_buffer);
     #endif
 
-    printf("path for realpath: %s\n", path_buffer); //TODO: delete
-
     if (path_buffer == NULL) {
         fprintf(stderr, "Error: error find path for file: %s\n", file_name);
         exit(1);
@@ -739,7 +737,6 @@ static void adjust_update_file(const char *file_name)
     const size_t file_name_length = strlen(path_buffer);
     const size_t length = _da_length(_files);
     for(file_index = 0; file_index < length; file_index++) {
-        printf("%s\n", _files[file_index].file_name); //TODO: delete
         if (strncmp(_files[file_index].file_name, path_buffer, file_name_length) == 0) {
             break;
         }
