@@ -719,13 +719,13 @@ static void adjust_update_file(const char *file_name)
     char buffer[256];
     size_t current_line;
     
-    #if _WIN32
-        char path_buffer[_MAX_PATH];
-        _fullpath(path_buffer, file_name, _MAX_PATH);
-    #else
-        char path_buffer[PATH_MAX];
-        realpath(file_name, path_buffer);
-    #endif
+#if _WIN32
+    char path_buffer[_MAX_PATH];
+    _fullpath(path_buffer, file_name, _MAX_PATH);
+#else
+    char path_buffer[PATH_MAX];
+    realpath(file_name, path_buffer);
+#endif
 
     if (path_buffer == NULL) {
         fprintf(stderr, "Error: error find path for file: %s\n", file_name);
