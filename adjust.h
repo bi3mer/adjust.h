@@ -278,8 +278,8 @@ static void _da_ensure_capacity(void **da, const size_t capacity_increase)
     }
 }
 
-static size_t _da_priority_insert(void **da, const size_t priority,
-                                  int (*compare)(const void *, const size_t))
+static void *_da_priority_insert(void **da, const size_t priority,
+                                 int (*compare)(const void *, const size_t))
 {
     size_t i, insert_index;
 
@@ -306,8 +306,7 @@ static size_t _da_priority_insert(void **da, const size_t priority,
     }
 
     ++h->length;
-
-    return insert_index;
+    return bytes + (insert_index * h->item_size);
 }
 
 static inline size_t _da_length(const void *da)
@@ -377,7 +376,7 @@ typedef struct _ADJUST_FILE
 {
     const char *file_name;
     _ADJUST_ENTRY *adjustables;
-    time_t last_update; 
+    time_t last_update;
 } _ADJUST_FILE;
 
 _ADJUST_FILE *_files;
@@ -395,7 +394,7 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
 {
     _ADJUST_ENTRY *adjustables;
     bool found = false;
-    size_t file_index, i;
+    size_t file_index;
 
     const size_t length = _da_length(_files);
     for (file_index = 0; file_index < length; ++file_index)
@@ -427,14 +426,14 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
     }
     else
     {
-        i = _da_priority_insert((void **)&_files[file_index].adjustables,
+        _ADJUST_ENTRY *ae =
+            _da_priority_insert((void **)&_files[file_index].adjustables,
                                 line_number, _adjust_priority_compare);
 
-        adjustables = _files[file_index].adjustables;
-        adjustables[i].type = type;
-        adjustables[i].line_number = line_number;
-        adjustables[i].should_cleanup = (type == _ADJUST_STRING);
-        adjustables[i].data = val; /* char**, not char* for string */
+        ae->type = type;
+        ae->line_number = line_number;
+        ae->should_cleanup = (type == _ADJUST_STRING);
+        ae->data = val; /* char**, not char* for string */
     }
 }
 
@@ -586,8 +585,9 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
     } while (0)
 
 /* Declarations for temporary data */
-void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
-                               const char *file_name, const size_t line_number)
+static void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
+                                      const char *file_name,
+                                      const size_t line_number)
 {
     _ADJUST_ENTRY *adjustables;
     size_t file_index, i;
@@ -617,30 +617,28 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
             }
         }
 
+        _ADJUST_ENTRY *ae = _da_priority_insert(
+            (void **)&adjustables, line_number, _adjust_priority_compare);
 
-        i = _da_priority_insert((void **)&adjustables, line_number,
-                                _adjust_priority_compare);
-
-        adjustables = af.adjustables;
-        adjustables[i].type = type;
-        adjustables[i].line_number = line_number;
-        adjustables[i].should_cleanup = true;
+        ae->type = type;
+        ae->line_number = line_number;
+        ae->should_cleanup = true;
 
         if (type == _ADJUST_STRING)
         {
-            adjustables[i].data = malloc(sizeof(char *));
-            char **str_ptr = (char **)adjustables[i].data;
+            ae->data = malloc(sizeof(char *));
+            char **str_ptr = (char **)ae->data;
             *str_ptr = malloc(strlen((char *)val) + 1);
             strcpy(*str_ptr, (char *)val);
         }
         else
         {
             const size_t size = _adjust_type_to_size(type);
-            adjustables[i].data = malloc(size);
-            memcpy(adjustables[i].data, val, size);
+            ae->data = malloc(size);
+            memcpy(ae->data, val, size);
         }
 
-        return adjustables[i].data; /* early return */
+        return ae->data; /* early return */
     }
 
     if (file_index == num_files)
@@ -651,7 +649,7 @@ void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
         _files[file_index].adjustables =
             (_ADJUST_ENTRY *)_da_init(sizeof(_ADJUST_ENTRY), 4);
         _files[file_index].last_update = 0;
-        
+
         adjustables = _files[file_index].adjustables;
         adjustables[0].type = type;
         adjustables[0].line_number = line_number;
@@ -1086,28 +1084,30 @@ static void adjust_update(void)
             fprintf(stderr, "Error: unable to open file: %s\n", af.file_name);
             exit(1);
         }
-        
-        #ifdef _WIN32
-            struct _stat fs;
-            int result = _stat(af.file_name, &fs);
-        #else
-            struct stat fs;
-            int result = stat(af.file_name, &fs);
-        #endif
-        
-        if (result == 0) 
+
+#ifdef _WIN32
+        struct _stat fs;
+        int result = _stat(af.file_name, &fs);
+#else
+        struct stat fs;
+        int result = stat(af.file_name, &fs);
+#endif
+
+        if (result == 0)
         {
-            if (fs.st_mtime == af.last_update) 
+            if (fs.st_mtime == af.last_update)
             {
                 break;
             }
-            else 
+            else
             {
                 _files[file_index].last_update = fs.st_mtime;
             }
         }
-        else {
-            fprintf(stderr, "Error: unable to retrieve file metadata: %s\n", af.file_name);
+        else
+        {
+            fprintf(stderr, "Error: unable to retrieve file metadata: %s\n",
+                    af.file_name);
         }
 
         data_length = _da_length(af.adjustables);
