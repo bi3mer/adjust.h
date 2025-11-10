@@ -720,14 +720,16 @@ static void adjust_update_file(const char *file_name)
     size_t current_line;
     
 #if _WIN32
+    char saved_path_buffer[_MAX_PATH];
     char path_buffer[_MAX_PATH];
-    _fullpath(path_buffer, file_name, _MAX_PATH);
+    char* res = _fullpath(path_buffer, file_name, _MAX_PATH);
 #else
+    char saved_path_buffer[PATH_MAX];
     char path_buffer[PATH_MAX];
-    realpath(file_name, path_buffer);
+    char* res = realpath(file_name, path_buffer);
 #endif
 
-    if (path_buffer == NULL) {
+    if (res == NULL) {
         fprintf(stderr, "Error: error find path for file: %s\n", file_name);
         exit(1);
     }
@@ -735,7 +737,12 @@ static void adjust_update_file(const char *file_name)
     const size_t file_name_length = strlen(path_buffer);
     const size_t length = _da_length(_files);
     for(file_index = 0; file_index < length; file_index++) {
-        if (strncmp(_files[file_index].file_name, path_buffer, file_name_length) == 0) {
+#if _WIN32
+        char* local_res = _fullpath(_files[file_index].file_name, saved_path_buffer);
+#else
+        char* local_res = realpath(_files[file_index].file_name, saved_path_buffer);
+#endif
+        if (strncmp(saved_path_buffer, path_buffer, file_name_length) == 0) {
             break;
         }
     }
