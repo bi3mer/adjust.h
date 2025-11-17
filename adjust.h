@@ -122,7 +122,7 @@ SOFTWARE.
  *       "INFO: adjust.h loaded GRAVITY" or "Error: formatting error with..."
  *
  * - [ ] adjust.h breaks on update if the user has malformed code. I don't think
- *       that this is the best decision. Instead, the behavior shoudl be that it
+ *       that this is the best decision. Instead, the behavior should be that it
  *       logs the error and then keeps going if there are other files to update.
  *       Essentially, I don't think adjust.h should break and end the users
  *       program if they mistakenly pressed save before being done editting
@@ -210,8 +210,9 @@ SOFTWARE.
 #define ADJUST_STRING(v) (v)
 
 #define adjust_init() ((void)0)
+#define adjust_update_index(i) ((void)0)  
+#define adjust_update_file(name) ((void)0)
 #define adjust_update() ((void)0)
-#define adjust_update_file() ((void)0)
 #define adjust_cleanup() ((void)0)
 
 #else
@@ -221,7 +222,9 @@ SOFTWARE.
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#ifndef _WIN32
 #include <sys/param.h>
+#endif
 
 /******************************************************************************/
 /* Generic Dynamic Array, not built for outside use */
@@ -395,11 +398,17 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
     _ADJUST_ENTRY *adjustables;
     bool found = false;
     size_t file_index;
+    char* full_file_name;
+#if _WIN32
+    full_file_name = _fullpath(NULL, file_name, _MAX_PATH);
+#else
+    full_file_name = realpath(file_name, NULL);
+#endif
 
     const size_t length = _da_length(_files);
     for (file_index = 0; file_index < length; ++file_index)
     {
-        if (strcmp(file_name, _files[file_index].file_name) == 0)
+        if (strcmp(full_file_name, _files[file_index].file_name) == 0)
         {
             found = true;
             break;
@@ -411,7 +420,7 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
         _da_ensure_capacity((void **)&_files, 1);
         _da_increment_length(_files);
 
-        _files[file_index].file_name = file_name;
+        _files[file_index].file_name = full_file_name;
         _files[file_index].last_update = 0;
         _files[file_index].adjustables =
             (_ADJUST_ENTRY *)_da_init(sizeof(_ADJUST_ENTRY), 4);
@@ -592,12 +601,18 @@ static void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
     _ADJUST_ENTRY *adjustables;
     size_t file_index, i;
     const size_t num_files = _da_length(_files);
+    char* full_file_name;
+#if _WIN32
+    full_file_name = _fullpath(NULL, file_name, _MAX_PATH);
+#else
+    full_file_name = realpath(file_name, NULL);
+#endif
 
     for (file_index = 0; file_index < num_files; ++file_index)
     {
         // find file
         _ADJUST_FILE af = _files[file_index];
-        if (strcmp(af.file_name, file_name) != 0)
+        if (strcmp(af.file_name, full_file_name) != 0)
         {
             continue;
         }
@@ -645,7 +660,7 @@ static void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
     {
         _da_ensure_capacity((void **)&_files, 1);
 
-        _files[file_index].file_name = file_name;
+        _files[file_index].file_name = full_file_name;
         _files[file_index].adjustables =
             (_ADJUST_ENTRY *)_da_init(sizeof(_ADJUST_ENTRY), 4);
         _files[file_index].last_update = 0;
@@ -709,78 +724,53 @@ static void adjust_init(void)
     _files = (_ADJUST_FILE *)_da_init(sizeof(_ADJUST_FILE), 4);
 }
 
-static void adjust_update_file(const char *file_name)
+static void adjust_update_index(const size_t index) 
 {
     _ADJUST_FILE af;
     _ADJUST_ENTRY e;
-    size_t file_index, data_index, data_length;
+    size_t data_index, data_length;
     FILE *file;
     char *value_start;
     char buffer[256];
     size_t current_line;
-    
-#if _WIN32
-    char saved_path_buffer[_MAX_PATH];
-    char path_buffer[_MAX_PATH];
-    char* res = _fullpath(path_buffer, file_name, _MAX_PATH);
-#else
-    char saved_path_buffer[PATH_MAX];
-    char path_buffer[PATH_MAX];
-    char* res = realpath(file_name, path_buffer);
-#endif
-
-    if (res == NULL) {
-        fprintf(stderr, "Error: error find path for file: %s\n", file_name);
-        exit(1);
-    }
-
-    const size_t file_name_length = strlen(path_buffer);
     const size_t length = _da_length(_files);
-    for(file_index = 0; file_index < length; file_index++) {
-#if _WIN32
-        char* local_res = _fullpath(_files[file_index].file_name, saved_path_buffer);
+    if (index >= length) 
+    {
+        fprintf(stderr, "Error: index out of bound\n");
+        exit(1);
+    }
+    af = _files[index];
+#ifdef _WIN32
+    struct _stat fs;
+    int result = _stat(af.file_name, &fs);
 #else
-        char* local_res = realpath(_files[file_index].file_name, saved_path_buffer);
+    struct stat fs;
+    int result = stat(af.file_name, &fs);
 #endif
-        if (strncmp(saved_path_buffer, path_buffer, file_name_length) == 0) {
-            break;
-        }
-    }
-    if (file_index == length) {
-        fprintf(stderr, "Error: file not found: %s\n", file_name);
-        exit(1);
-    }
-
-    af = _files[file_index];
-
-    file = fopen(af.file_name, "r");
-    if (file == NULL)
+    if (result == 0)
     {
-        fprintf(stderr, "Error: unable to open file: %s\n", af.file_name);
-        exit(1);
-    }
-    
-    #ifdef _WIN32
-        struct _stat fs;
-        int result = _stat(af.file_name, &fs);
-    #else
-        struct stat fs;
-        int result = stat(af.file_name, &fs);
-    #endif
-    
-    if (result == 0) 
-    {
-        if (fs.st_mtime == af.last_update) 
+        if (fs.st_mtime == af.last_update)
         {
             return;
         }
-        else 
+        else
         {
-            _files[file_index].last_update = fs.st_mtime;
+            _files[index].last_update = fs.st_mtime;
         }
     }
-    else {
-        fprintf(stderr, "Error: unable to retrieve file metadata: %s\n", af.file_name);
+    else
+    {
+        fprintf(stderr, "Error: unable to retrieve file metadata: %s\n",
+                af.file_name);
+    }
+
+    //after the metadata request so we can avoid useless context switching
+    file = fopen(af.file_name, "r");
+    if (file == NULL)
+    {
+        perror("error:");
+        fprintf(stderr, "Error: unable to open file: %s\n", af.file_name);
+        exit(1);
     }
 
     data_length = _da_length(af.adjustables);
@@ -1070,339 +1060,44 @@ static void adjust_update_file(const char *file_name)
     fclose(file);
 }
 
+static void adjust_update_file(const char *file_name)
+{
+    size_t file_index;
+#if _WIN32
+    char path_buffer[_MAX_PATH];
+    char* res = _fullpath(path_buffer, file_name, _MAX_PATH);
+#else
+    char path_buffer[PATH_MAX];
+    char* res = realpath(file_name, path_buffer);
+#endif
+
+    if (res == NULL) {
+        fprintf(stderr, "Error: error find path for file: %s\n", path_buffer);
+        exit(1);
+    }
+
+    const size_t file_name_length = strlen(path_buffer);
+    const size_t length = _da_length(_files);
+    for(file_index = 0; file_index < length; file_index++) {
+        if (strncmp(_files[file_index].file_name, path_buffer, file_name_length) == 0) {
+            break;
+        }
+    }
+    if (file_index == length) {
+        fprintf(stderr, "Error: file not found: %s\n", file_name);
+        exit(1);
+    }
+
+    adjust_update_index(file_index);
+}
+
 static void adjust_update(void)
 {
-    _ADJUST_FILE af;
-    _ADJUST_ENTRY e;
-    size_t file_index, data_index, data_length;
-    FILE *file;
-    char *value_start;
-    char buffer[256];
-    size_t current_line;
-
+    size_t file_index;
     const size_t length = _da_length(_files);
     for (file_index = 0; file_index < length; ++file_index)
     {
-        af = _files[file_index];
-
-        file = fopen(af.file_name, "r");
-        if (file == NULL)
-        {
-            fprintf(stderr, "Error: unable to open file: %s\n", af.file_name);
-            exit(1);
-        }
-
-#ifdef _WIN32
-        struct _stat fs;
-        int result = _stat(af.file_name, &fs);
-#else
-        struct stat fs;
-        int result = stat(af.file_name, &fs);
-#endif
-
-        if (result == 0)
-        {
-            if (fs.st_mtime == af.last_update)
-            {
-                break;
-            }
-            else
-            {
-                _files[file_index].last_update = fs.st_mtime;
-            }
-        }
-        else
-        {
-            fprintf(stderr, "Error: unable to retrieve file metadata: %s\n",
-                    af.file_name);
-        }
-
-        data_length = _da_length(af.adjustables);
-        current_line = 0;
-        for (data_index = 0; data_index < data_length; ++data_index)
-        {
-            e = af.adjustables[data_index];
-            while (current_line < e.line_number)
-            {
-                if (fgets(buffer, sizeof(buffer), file) == NULL)
-                {
-                    fprintf(stderr, "Error: EOF before line %lu in %s\n",
-                            e.line_number, af.file_name);
-                    fclose(file);
-                    exit(1);
-                }
-
-                ++current_line;
-            }
-
-            if (strstr(buffer, "ADJUST_VAR_") ||
-                strstr(buffer, "ADJUST_CONST_") ||
-                strstr(buffer, "ADJUST_GLOBAL_"))
-            {
-                value_start = strchr(buffer, ',');
-                if (value_start == NULL)
-                {
-                    fprintf(stderr,
-                            "Error: no comma found in ADJUST macro: %s:%lu\n",
-                            af.file_name, e.line_number);
-                    fclose(file);
-                    exit(1);
-                }
-                ++value_start; /* skip the
-                                  ',' */
-            }
-            else if (strstr(buffer, "ADJUST_BOOL(") ||
-                     strstr(buffer, "ADJUST_CHAR(") ||
-                     strstr(buffer, "ADJUST_INT(") ||
-                     strstr(buffer, "ADJUST_FLOAT(") ||
-                     strstr(buffer, "ADJUST_STRING("))
-            {
-                value_start = strchr(buffer, '(');
-                if (value_start == NULL)
-                {
-                    fprintf(stderr, "Error: no opening paren found: %s:%lu\n",
-                            af.file_name, e.line_number);
-                    fclose(file);
-                    exit(1);
-                }
-            }
-            else
-            {
-                fprintf(stderr,
-                        "Error: unrecognized ADJUST macro format: %s:%lu\n",
-                        af.file_name, e.line_number);
-                fclose(file);
-                exit(1);
-            }
-
-            /* skip white space after ',' */
-            ++value_start;
-            while (*value_start &&
-                   (*value_start == ' ' || *value_start == '\t'))
-            {
-                ++value_start;
-            }
-
-            switch (e.type)
-            {
-            case _ADJUST_FLOAT:
-            {
-                if (sscanf(value_start, "%f", (float *)e.data) != 1)
-                {
-                    fprintf(stderr, "Error: failed to parse float: %s:%lu\n",
-                            af.file_name, e.line_number);
-                    fclose(file);
-                    exit(1);
-                }
-
-                break;
-            }
-
-            case _ADJUST_INT:
-            {
-                if (sscanf(value_start, "%i", (int *)e.data) != 1)
-                {
-                    fprintf(stderr, "Error, failed to parse int: %s:%lu\n",
-                            af.file_name, e.line_number);
-                    fclose(file);
-                    exit(1);
-                }
-
-                break;
-            }
-
-            case _ADJUST_BOOL:
-            {
-                if (*value_start == '0' ||
-                    strncmp(value_start, "TRUE", 4) == 0 ||
-                    strncmp(value_start, "true", 4) == 0)
-                {
-                    *(bool *)e.data = true;
-                }
-                else if (*value_start == '1' ||
-                         strncmp(value_start, "FALSE", 5) == 0 ||
-                         strncmp(value_start, "false", 5) == 0)
-                {
-                    *(bool *)e.data = false;
-                }
-                else
-                {
-                    fprintf(
-                        stderr,
-                        "Error: failed to parse bool (true or false): %s:%lu\n",
-                        af.file_name, e.line_number);
-                    fclose(file);
-                    exit(1);
-                }
-
-                break;
-            }
-
-            case _ADJUST_CHAR:
-            {
-                char *quote_start;
-
-                quote_start = strchr(value_start, '\'');
-                if (!quote_start)
-                {
-                    fprintf(stderr,
-                            "Error: failed to find starting quotation (\'): "
-                            "%s:%lu\n",
-                            af.file_name, e.line_number);
-                    fclose(file);
-                    exit(1);
-                }
-
-                ++quote_start;
-                if (*quote_start == '\'')
-                {
-                    fprintf(stderr,
-                            "Error: char format '' invalid in C, %s:%lu\n",
-                            af.file_name, e.line_number);
-                    fclose(file);
-                    exit(1);
-                }
-
-                if (*quote_start == '\\')
-                {
-                    ++quote_start;
-                }
-
-                if (*(quote_start + 1) != '\'')
-                {
-                    fprintf(stderr,
-                            "Error: missing ending ' for char, %s:%lu\n",
-                            af.file_name, e.line_number);
-                    fclose(file);
-                    exit(1);
-                }
-
-                *(char *)e.data = *quote_start;
-
-                break;
-            }
-
-            case _ADJUST_STRING:
-            {
-                char *quote_start, *quote_end, *new_string, *dst;
-                size_t string_length;
-
-                quote_start = strchr(value_start, '"');
-                if (!quote_start)
-                {
-                    fprintf(stderr,
-                            "Error: failed to find starting quotation (\"): "
-                            "%s:%lu\n",
-                            af.file_name, e.line_number);
-                    fclose(file);
-                    exit(1);
-                }
-                ++quote_start;
-
-                quote_end = quote_start;
-                while (*quote_end)
-                {
-                    if (*quote_end == '\\' && *(quote_end + 1))
-                    {
-                        quote_end += 2;
-                    }
-                    else if (*quote_end == '"')
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        quote_end++;
-                    }
-                }
-
-                if (*quote_end != '"')
-                {
-                    fprintf(
-                        stderr,
-                        "Error: failed to find ending quotation (\"): %s:%lu\n",
-                        af.file_name, e.line_number);
-                    fclose(file);
-                    exit(1);
-                }
-
-                string_length = (size_t)(quote_end - quote_start);
-                new_string = realloc(*(char **)e.data, string_length + 1);
-                if (!new_string)
-                {
-                    fprintf(
-                        stderr,
-                        "Error: failed to reallocate string memory: %s:%lu\n",
-                        af.file_name, e.line_number);
-                    fclose(file);
-                    exit(1);
-                }
-
-                dst = new_string;
-                while (quote_start < quote_end)
-                {
-                    if (*quote_start == '\\' && (quote_start + 1) < quote_end)
-                    {
-                        quote_start++; /* Skip
-                                          backslash */
-                        switch (*quote_start)
-                        {
-                        case 'n':
-                            *dst = '\n';
-                            ++dst;
-                            break;
-                        case 't':
-                            *dst = '\t';
-                            ++dst;
-                            break;
-                        case 'r':
-                            *dst = '\r';
-                            ++dst;
-                            break;
-                        case '\\':
-                            *dst = '\\';
-                            ++dst;
-                            break;
-                        case '"':
-                            *dst = '"';
-                            ++dst;
-                            break;
-                        case '\'':
-                            *dst = '\'';
-                            ++dst;
-                            break;
-                        default:
-                            *dst = '\\';
-                            ++dst;
-
-                            *dst = *quote_start;
-                            ++dst;
-                            break;
-                        }
-                        quote_start++;
-                    }
-                    else
-                    {
-                        *dst = *quote_start;
-                        ++dst;
-                        ++quote_start;
-                    }
-                }
-
-                *dst = '\0';
-                *(char **)e.data = new_string;
-
-                break;
-            }
-
-            default:
-                fprintf(stderr, "Error: unhandled adjust type: %u\n", e.type);
-                fclose(file);
-                exit(1);
-            }
-        }
-
-        fclose(file);
+        adjust_update_index(file_index);
     }
 }
 
