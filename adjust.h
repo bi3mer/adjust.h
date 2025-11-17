@@ -405,6 +405,11 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
     full_file_name = realpath(file_name, NULL);
 #endif
 
+    if (full_file_name == NULL) {
+        fprintf(stderr, "Error: error find path for file: %s\n", file_name);
+        exit(1);
+    }
+
     const size_t length = _da_length(_files);
     for (file_index = 0; file_index < length; ++file_index)
     {
@@ -607,6 +612,11 @@ static void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
 #else
     full_file_name = realpath(file_name, NULL);
 #endif
+
+    if (full_file_name == NULL) {
+        fprintf(stderr, "Error: error find path for file: %s\n", file_name);
+        exit(1);
+    }
 
     for (file_index = 0; file_index < num_files; ++file_index)
     {
