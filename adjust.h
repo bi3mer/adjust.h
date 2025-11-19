@@ -103,6 +103,8 @@ SOFTWARE.
  *       that users can be really specific if they want to be. Also, add an
  *       example to show the difference.
  *
+ * - [ ] Need to add some kind of automatic testing to make life easier
+ *
  * - [ ] Function to update the text of the source file. This will be used in
  *       the two GUI examples where users will be able to open an editor GUI to
  *       change values in the GUI and see updates live, but this will also
@@ -175,7 +177,7 @@ SOFTWARE.
  * - gouwsxander
  * - vatsanant (Peanut)
  * - NKONO NDEME Miguel (miguelnkono)
- * - Riccardo Modolo (RickSrick)
+ * - Riccardo Modolo (RickSrick) x2
  * - birds3345
  *
  ******************************************************************************/
@@ -210,7 +212,7 @@ SOFTWARE.
 #define ADJUST_STRING(v) (v)
 
 #define adjust_init() ((void)0)
-#define adjust_update_index(i) ((void)0)  
+#define adjust_update_index(i) ((void)0)
 #define adjust_update_file(name) ((void)0)
 #define adjust_update() ((void)0)
 #define adjust_cleanup() ((void)0)
@@ -377,7 +379,7 @@ typedef struct _ADJUST_ENTRY
 
 typedef struct _ADJUST_FILE
 {
-    const char *file_name;
+    char *file_name;
     _ADJUST_ENTRY *adjustables;
     time_t last_update;
 } _ADJUST_FILE;
@@ -398,14 +400,15 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
     _ADJUST_ENTRY *adjustables;
     bool found = false;
     size_t file_index;
-    char* full_file_name;
+    char *full_file_name;
 #if _WIN32
     full_file_name = _fullpath(NULL, file_name, _MAX_PATH);
 #else
     full_file_name = realpath(file_name, NULL);
 #endif
 
-    if (full_file_name == NULL) {
+    if (full_file_name == NULL)
+    {
         fprintf(stderr, "Error: error find path for file: %s\n", file_name);
         exit(1);
     }
@@ -440,6 +443,8 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
     }
     else
     {
+        free(full_file_name);
+
         _ADJUST_ENTRY *ae =
             _da_priority_insert((void **)&_files[file_index].adjustables,
                                 line_number, _adjust_priority_compare);
@@ -606,14 +611,15 @@ static void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
     _ADJUST_ENTRY *adjustables;
     size_t file_index, i;
     const size_t num_files = _da_length(_files);
-    char* full_file_name;
+    char *full_file_name;
 #if _WIN32
     full_file_name = _fullpath(NULL, file_name, _MAX_PATH);
 #else
     full_file_name = realpath(file_name, NULL);
 #endif
 
-    if (full_file_name == NULL) {
+    if (full_file_name == NULL)
+    {
         fprintf(stderr, "Error: error find path for file: %s\n", file_name);
         exit(1);
     }
@@ -734,7 +740,7 @@ static void adjust_init(void)
     _files = (_ADJUST_FILE *)_da_init(sizeof(_ADJUST_FILE), 4);
 }
 
-static void adjust_update_index(const size_t index) 
+static void adjust_update_index(const size_t index)
 {
     _ADJUST_FILE af;
     _ADJUST_ENTRY e;
@@ -744,7 +750,7 @@ static void adjust_update_index(const size_t index)
     char buffer[256];
     size_t current_line;
     const size_t length = _da_length(_files);
-    if (index >= length) 
+    if (index >= length)
     {
         fprintf(stderr, "Error: index out of bound\n");
         exit(1);
@@ -774,7 +780,7 @@ static void adjust_update_index(const size_t index)
                 af.file_name);
     }
 
-    //after the metadata request so we can avoid useless context switching
+    // after the metadata request so we can avoid useless context switching
     file = fopen(af.file_name, "r");
     if (file == NULL)
     {
@@ -801,8 +807,7 @@ static void adjust_update_index(const size_t index)
             ++current_line;
         }
 
-        if (strstr(buffer, "ADJUST_VAR_") ||
-            strstr(buffer, "ADJUST_CONST_") ||
+        if (strstr(buffer, "ADJUST_VAR_") || strstr(buffer, "ADJUST_CONST_") ||
             strstr(buffer, "ADJUST_GLOBAL_"))
         {
             value_start = strchr(buffer, ',');
@@ -818,10 +823,10 @@ static void adjust_update_index(const size_t index)
                                 ',' */
         }
         else if (strstr(buffer, "ADJUST_BOOL(") ||
-                    strstr(buffer, "ADJUST_CHAR(") ||
-                    strstr(buffer, "ADJUST_INT(") ||
-                    strstr(buffer, "ADJUST_FLOAT(") ||
-                    strstr(buffer, "ADJUST_STRING("))
+                 strstr(buffer, "ADJUST_CHAR(") ||
+                 strstr(buffer, "ADJUST_INT(") ||
+                 strstr(buffer, "ADJUST_FLOAT(") ||
+                 strstr(buffer, "ADJUST_STRING("))
         {
             value_start = strchr(buffer, '(');
             if (value_start == NULL)
@@ -834,8 +839,7 @@ static void adjust_update_index(const size_t index)
         }
         else
         {
-            fprintf(stderr,
-                    "Error: unrecognized ADJUST macro format: %s:%lu\n",
+            fprintf(stderr, "Error: unrecognized ADJUST macro format: %s:%lu\n",
                     af.file_name, e.line_number);
             fclose(file);
             exit(1);
@@ -843,8 +847,7 @@ static void adjust_update_index(const size_t index)
 
         /* skip white space after ',' */
         ++value_start;
-        while (*value_start &&
-                (*value_start == ' ' || *value_start == '\t'))
+        while (*value_start && (*value_start == ' ' || *value_start == '\t'))
         {
             ++value_start;
         }
@@ -879,24 +882,22 @@ static void adjust_update_index(const size_t index)
 
         case _ADJUST_BOOL:
         {
-            if (*value_start == '0' ||
-                strncmp(value_start, "TRUE", 4) == 0 ||
+            if (*value_start == '0' || strncmp(value_start, "TRUE", 4) == 0 ||
                 strncmp(value_start, "true", 4) == 0)
             {
                 *(bool *)e.data = true;
             }
             else if (*value_start == '1' ||
-                        strncmp(value_start, "FALSE", 5) == 0 ||
-                        strncmp(value_start, "false", 5) == 0)
+                     strncmp(value_start, "FALSE", 5) == 0 ||
+                     strncmp(value_start, "false", 5) == 0)
             {
                 *(bool *)e.data = false;
             }
             else
             {
-                fprintf(
-                    stderr,
-                    "Error: failed to parse bool (true or false): %s:%lu\n",
-                    af.file_name, e.line_number);
+                fprintf(stderr,
+                        "Error: failed to parse bool (true or false): %s:%lu\n",
+                        af.file_name, e.line_number);
                 fclose(file);
                 exit(1);
             }
@@ -922,8 +923,7 @@ static void adjust_update_index(const size_t index)
             ++quote_start;
             if (*quote_start == '\'')
             {
-                fprintf(stderr,
-                        "Error: char format '' invalid in C, %s:%lu\n",
+                fprintf(stderr, "Error: char format '' invalid in C, %s:%lu\n",
                         af.file_name, e.line_number);
                 fclose(file);
                 exit(1);
@@ -936,8 +936,7 @@ static void adjust_update_index(const size_t index)
 
             if (*(quote_start + 1) != '\'')
             {
-                fprintf(stderr,
-                        "Error: missing ending ' for char, %s:%lu\n",
+                fprintf(stderr, "Error: missing ending ' for char, %s:%lu\n",
                         af.file_name, e.line_number);
                 fclose(file);
                 exit(1);
@@ -984,10 +983,9 @@ static void adjust_update_index(const size_t index)
 
             if (*quote_end != '"')
             {
-                fprintf(
-                    stderr,
-                    "Error: failed to find ending quotation (\"): %s:%lu\n",
-                    af.file_name, e.line_number);
+                fprintf(stderr,
+                        "Error: failed to find ending quotation (\"): %s:%lu\n",
+                        af.file_name, e.line_number);
                 fclose(file);
                 exit(1);
             }
@@ -996,10 +994,9 @@ static void adjust_update_index(const size_t index)
             new_string = realloc(*(char **)e.data, string_length + 1);
             if (!new_string)
             {
-                fprintf(
-                    stderr,
-                    "Error: failed to reallocate string memory: %s:%lu\n",
-                    af.file_name, e.line_number);
+                fprintf(stderr,
+                        "Error: failed to reallocate string memory: %s:%lu\n",
+                        af.file_name, e.line_number);
                 fclose(file);
                 exit(1);
             }
@@ -1075,30 +1072,37 @@ static void adjust_update_file(const char *file_name)
     size_t file_index;
 #if _WIN32
     char path_buffer[_MAX_PATH];
-    char* res = _fullpath(path_buffer, file_name, _MAX_PATH);
+    char *res = _fullpath(path_buffer, file_name, _MAX_PATH);
 #else
     char path_buffer[PATH_MAX];
-    char* res = realpath(file_name, path_buffer);
+    char *res = realpath(file_name, path_buffer);
 #endif
 
-    if (res == NULL) {
+    if (res == NULL)
+    {
         fprintf(stderr, "Error: error find path for file: %s\n", path_buffer);
         exit(1);
     }
 
     const size_t file_name_length = strlen(path_buffer);
     const size_t length = _da_length(_files);
-    for(file_index = 0; file_index < length; file_index++) {
-        if (strncmp(_files[file_index].file_name, path_buffer, file_name_length) == 0) {
+    for (file_index = 0; file_index < length; file_index++)
+    {
+        if (strncmp(_files[file_index].file_name, path_buffer,
+                    file_name_length) == 0)
+        {
             break;
         }
     }
-    if (file_index == length) {
+    if (file_index == length)
+    {
         fprintf(stderr, "Error: file not found: %s\n", file_name);
         exit(1);
     }
 
     adjust_update_index(file_index);
+
+    free(res);
 }
 
 static void adjust_update(void)
@@ -1122,6 +1126,10 @@ static void adjust_cleanup(void)
 
     for (i = 0; i < length; ++i)
     {
+        _ADJUST_FILE af = _files[i];
+        if (_files[i].file_name)
+            free(af.file_name);
+
         if (!_files[i].adjustables)
             continue;
 
