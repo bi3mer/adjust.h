@@ -184,9 +184,10 @@ SOFTWARE.
 
 #include <stdbool.h>
 
-/******************************************************************************/
 #ifdef MODE_PRODUCTION
-/* In production mode, compile everything away */
+/******************************************************************************/
+/* In production mode, the interface is exposed, but compiles to ntohing      */
+/******************************************************************************/
 #define ADJUST_CONST_BOOL(name, val) const bool name = val
 #define ADJUST_CONST_CHAR(name, val) const char name = val
 #define ADJUST_CONST_INT(name, val) const int name = val
@@ -212,6 +213,11 @@ SOFTWARE.
 #define ADJUST_STRING(v) (v)
 
 #define adjust_init() ((void)0)
+#define adjust_init_with_allocator(                                            \
+    void *(*alloc)(const size_t size, void *user_data),                        \
+    void (*free)(void *ptr, const size_t size, void *user_data),               \
+    void *(*realloc)(void *base, const size_t size, void *user_data))          \
+    ((void)0)
 #define adjust_update_index(i) ((void)0)
 #define adjust_update_file(name) ((void)0)
 #define adjust_update() ((void)0)
@@ -229,7 +235,44 @@ SOFTWARE.
 #endif
 
 /******************************************************************************/
-/* Generic Dynamic Array, not built for outside use */
+/*                          Custom Memory Management                          */
+/******************************************************************************/
+typedef void *(*_adjust_mem_alloc_func)(size_t bytes, void *user_data);
+typedef void *(*_adjust_mem_realloc_func)(void *ptr, size_t new_size,
+                                          void *user_data);
+typedef void (*_adjust_mem_free_func)(void *ptr, void *user_data);
+
+typedef struct
+{
+    _adjust_mem_alloc_func alloc;
+    _adjust_mem_realloc_func realloc;
+    _adjust_mem_free_func free;
+    void *context;
+} _Adjust_Memory_Interface;
+
+_Adjust_Memory_Interface _a_memory;
+
+static void *_a_default_alloc(size_t bytes, void *context)
+{
+    (void)context;
+    return malloc(bytes);
+}
+
+static void *_a_default_realloc(void *ptr, size_t new_size, void *context)
+{
+    (void)context;
+    return realloc(ptr, new_size);
+}
+
+static void _a_default_free(void *ptr, void *context)
+{
+    (void)context;
+    free(ptr);
+}
+
+/******************************************************************************/
+/*                               Dynamic Array                                */
+/******************************************************************************/
 typedef struct _DA_Header
 {
     size_t length;
@@ -240,8 +283,8 @@ typedef struct _DA_Header
 static void *_da_init(const size_t item_size, const size_t capacity)
 {
     void *ptr = 0;
-    _DA_Header *h =
-        (_DA_Header *)malloc(item_size * capacity + sizeof(_DA_Header));
+    _DA_Header *h = (_DA_Header *)_a_memory.alloc(
+        item_size * capacity + sizeof(_DA_Header), _a_memory.context);
 
     if (h)
     {
@@ -252,7 +295,7 @@ static void *_da_init(const size_t item_size, const size_t capacity)
     }
     else
     {
-        fprintf(stderr, "Unable to initialize dynamic array with malloc.\n");
+        fprintf(stderr, "Unable to initialize dynamic array.\n");
         exit(1);
     }
 
@@ -270,8 +313,10 @@ static void _da_ensure_capacity(void **da, const size_t capacity_increase)
             new_capacity *= 2;
         }
 
-        h = (_DA_Header *)realloc(h, h->item_size * new_capacity +
-                                         sizeof(_DA_Header));
+        h = (_DA_Header *)_a_memory.realloc(
+            h, h->item_size * new_capacity + sizeof(_DA_Header),
+            _a_memory.context);
+
         if (!h)
         {
             fprintf(stderr, "Unable to resize dynamic array with realloc.\n");
@@ -331,12 +376,13 @@ static inline void _da_free(void *da)
 {
     if (da)
     {
-        free(((_DA_Header *)(da)-1));
+        _a_memory.free((_DA_Header *)(da)-1, _a_memory.context);
     }
 }
 
 /******************************************************************************/
-/**************** Adjust ****************/
+/*                                  adjust.h                                  */
+/******************************************************************************/
 typedef enum
 {
     _ADJUST_FLOAT = 0,
@@ -384,8 +430,9 @@ typedef struct _ADJUST_FILE
     time_t last_update;
 } _ADJUST_FILE;
 
-_ADJUST_FILE *_files;
+_ADJUST_FILE *_a_files;
 
+/* Core Functions for Adjust */
 static inline int _adjust_priority_compare(const void *element,
                                            const size_t priority)
 {
@@ -413,10 +460,10 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
         exit(1);
     }
 
-    const size_t length = _da_length(_files);
+    const size_t length = _da_length(_a_files);
     for (file_index = 0; file_index < length; ++file_index)
     {
-        if (strcmp(full_file_name, _files[file_index].file_name) == 0)
+        if (strcmp(full_file_name, _a_files[file_index].file_name) == 0)
         {
             found = true;
             break;
@@ -425,28 +472,28 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
 
     if (!found)
     {
-        _da_ensure_capacity((void **)&_files, 1);
-        _da_increment_length(_files);
+        _da_ensure_capacity((void **)&_a_files, 1);
+        _da_increment_length(_a_files);
 
-        _files[file_index].file_name = full_file_name;
-        _files[file_index].last_update = 0;
-        _files[file_index].adjustables =
+        _a_files[file_index].file_name = full_file_name;
+        _a_files[file_index].last_update = 0;
+        _a_files[file_index].adjustables =
             (_ADJUST_ENTRY *)_da_init(sizeof(_ADJUST_ENTRY), 4);
 
-        adjustables = _files[file_index].adjustables;
+        adjustables = _a_files[file_index].adjustables;
         adjustables[0].type = type;
         adjustables[0].line_number = line_number;
         adjustables[0].should_cleanup = (type == _ADJUST_STRING);
         adjustables[0].data = val; /* char**, not char* for string */
 
-        _da_increment_length(_files[file_index].adjustables);
+        _da_increment_length(_a_files[file_index].adjustables);
     }
     else
     {
-        free(full_file_name);
+        _a_memory.free(full_file_name, _a_memory.context);
 
         _ADJUST_ENTRY *ae =
-            _da_priority_insert((void **)&_files[file_index].adjustables,
+            _da_priority_insert((void **)&_a_files[file_index].adjustables,
                                 line_number, _adjust_priority_compare);
 
         ae->type = type;
@@ -456,6 +503,7 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
     }
 }
 
+/* Variable and constant declarations */
 #define ADJUST_VAR_FLOAT(name, val)                                            \
     float name = val;                                                          \
     _adjust_register(&name, _ADJUST_FLOAT, __FILE__, __LINE__)
@@ -494,7 +542,7 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
     {                                                                          \
         const char *_temp = val;                                               \
         size_t _len = strlen(_temp) + 1;                                       \
-        name = malloc(sizeof(char) * _len);                                    \
+        name = _a_memory.alloc(sizeof(char) * _len, NULL);                     \
         memcpy(name, _temp, _len);                                             \
         _adjust_register(&name, _ADJUST_STRING, __FILE__, __LINE__);           \
     } while (0)
@@ -505,7 +553,7 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
     {                                                                          \
         const char *_temp = val;                                               \
         size_t _len = strlen(_temp) + 1;                                       \
-        name = malloc(sizeof(char) * _len);                                    \
+        name = _a_memory.alloc(sizeof(char) * _len, NULL);                     \
         memcpy(name, _temp, _len);                                             \
         _adjust_register(&name, _ADJUST_STRING, __FILE__, __LINE__);           \
     } while (0)
@@ -598,7 +646,7 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
     {                                                                          \
         const char *_temp = name;                                              \
         size_t _len = strlen(_temp) + 1;                                       \
-        name = malloc(sizeof(char) * _len);                                    \
+        name = _a_memory.alloc(sizeof(char) * _len, _a_memory.context);        \
         strcpy(name, _temp);                                                   \
         _adjust_register_global(&name, _ADJUST_STRING, __FILE__, #name);       \
     } while (0)
@@ -610,7 +658,7 @@ static void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
 {
     _ADJUST_ENTRY *adjustables;
     size_t file_index, i;
-    const size_t num_files = _da_length(_files);
+    const size_t num_files = _da_length(_a_files);
     char *full_file_name;
 #if _WIN32
     full_file_name = _fullpath(NULL, file_name, _MAX_PATH);
@@ -627,7 +675,7 @@ static void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
     for (file_index = 0; file_index < num_files; ++file_index)
     {
         // find file
-        _ADJUST_FILE af = _files[file_index];
+        _ADJUST_FILE af = _a_files[file_index];
         if (strcmp(af.file_name, full_file_name) != 0)
         {
             continue;
@@ -657,15 +705,16 @@ static void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
 
         if (type == _ADJUST_STRING)
         {
-            ae->data = malloc(sizeof(char *));
+            ae->data = _a_memory.alloc(sizeof(char *), _a_memory.context);
             char **str_ptr = (char **)ae->data;
-            *str_ptr = malloc(strlen((char *)val) + 1);
+            *str_ptr =
+                _a_memory.alloc(strlen((char *)val) + 1, _a_memory.context);
             strcpy(*str_ptr, (char *)val);
         }
         else
         {
             const size_t size = _adjust_type_to_size(type);
-            ae->data = malloc(size);
+            ae->data = _a_memory.alloc(size, _a_memory.context);
             memcpy(ae->data, val, size);
         }
 
@@ -674,35 +723,37 @@ static void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
 
     if (file_index == num_files)
     {
-        _da_ensure_capacity((void **)&_files, 1);
+        _da_ensure_capacity((void **)&_a_files, 1);
 
-        _files[file_index].file_name = full_file_name;
-        _files[file_index].adjustables =
+        _a_files[file_index].file_name = full_file_name;
+        _a_files[file_index].adjustables =
             (_ADJUST_ENTRY *)_da_init(sizeof(_ADJUST_ENTRY), 4);
-        _files[file_index].last_update = 0;
+        _a_files[file_index].last_update = 0;
 
-        adjustables = _files[file_index].adjustables;
+        adjustables = _a_files[file_index].adjustables;
         adjustables[0].type = type;
         adjustables[0].line_number = line_number;
         adjustables[0].should_cleanup = true;
 
-        _da_increment_length(_files);
+        _da_increment_length(_a_files);
 
         if (type == _ADJUST_STRING)
         {
-            adjustables[0].data = malloc(sizeof(char *));
+            adjustables[0].data =
+                _a_memory.alloc(sizeof(char *), _a_memory.context);
             char **str_ptr = (char **)adjustables[0].data;
-            *str_ptr = malloc(strlen((char *)val) + 1);
+            *str_ptr =
+                _a_memory.alloc(strlen((char *)val) + 1, _a_memory.context);
             strcpy(*str_ptr, (char *)val);
         }
         else
         {
             const size_t size = _adjust_type_to_size(type);
-            adjustables[0].data = malloc(size);
+            adjustables[0].data = _a_memory.alloc(size, _a_memory.context);
             memcpy(adjustables[0].data, val, size);
         }
 
-        _da_increment_length(_files[file_index].adjustables);
+        _da_increment_length(_a_files[file_index].adjustables);
 
         return adjustables[0].data;
     }
@@ -737,7 +788,25 @@ static void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
 /* init, update, and cleanup*/
 static void adjust_init(void)
 {
-    _files = (_ADJUST_FILE *)_da_init(sizeof(_ADJUST_FILE), 4);
+    _a_memory.alloc = _a_default_alloc;
+    _a_memory.realloc = _a_default_realloc;
+    _a_memory.free = _a_default_free;
+    _a_memory.context = NULL;
+
+    _a_files = (_ADJUST_FILE *)_da_init(sizeof(_ADJUST_FILE), 4);
+}
+
+static void adjust_init_with_allocator(_adjust_mem_alloc_func m_alloc,
+                                       _adjust_mem_realloc_func m_realloc,
+                                       _adjust_mem_free_func m_free,
+                                       void *context)
+{
+    _a_memory.alloc = m_alloc;
+    _a_memory.realloc = m_realloc;
+    _a_memory.free = m_free;
+    _a_memory.context = context;
+
+    _a_files = (_ADJUST_FILE *)_da_init(sizeof(_ADJUST_FILE), 4);
 }
 
 static void adjust_update_index(const size_t index)
@@ -749,13 +818,15 @@ static void adjust_update_index(const size_t index)
     char *value_start;
     char buffer[256];
     size_t current_line;
-    const size_t length = _da_length(_files);
+    const size_t length = _da_length(_a_files);
+
     if (index >= length)
     {
         fprintf(stderr, "Error: index out of bound\n");
         exit(1);
     }
-    af = _files[index];
+
+    af = _a_files[index];
 #ifdef _WIN32
     struct _stat fs;
     int result = _stat(af.file_name, &fs);
@@ -763,6 +834,7 @@ static void adjust_update_index(const size_t index)
     struct stat fs;
     int result = stat(af.file_name, &fs);
 #endif
+
     if (result == 0)
     {
         if (fs.st_mtime == af.last_update)
@@ -771,7 +843,7 @@ static void adjust_update_index(const size_t index)
         }
         else
         {
-            _files[index].last_update = fs.st_mtime;
+            _a_files[index].last_update = fs.st_mtime;
         }
     }
     else
@@ -991,7 +1063,8 @@ static void adjust_update_index(const size_t index)
             }
 
             string_length = (size_t)(quote_end - quote_start);
-            new_string = realloc(*(char **)e.data, string_length + 1);
+            new_string = _a_memory.realloc(*(char **)e.data, string_length + 1,
+                                           _a_memory.context);
             if (!new_string)
             {
                 fprintf(stderr,
@@ -1085,10 +1158,10 @@ static void adjust_update_file(const char *file_name)
     }
 
     const size_t file_name_length = strlen(path_buffer);
-    const size_t length = _da_length(_files);
+    const size_t length = _da_length(_a_files);
     for (file_index = 0; file_index < length; file_index++)
     {
-        if (strncmp(_files[file_index].file_name, path_buffer,
+        if (strncmp(_a_files[file_index].file_name, path_buffer,
                     file_name_length) == 0)
         {
             break;
@@ -1102,13 +1175,13 @@ static void adjust_update_file(const char *file_name)
 
     adjust_update_index(file_index);
 
-    free(res);
+    _a_memory.free(res, _a_memory.context);
 }
 
 static void adjust_update(void)
 {
     size_t file_index;
-    const size_t length = _da_length(_files);
+    const size_t length = _da_length(_a_files);
     for (file_index = 0; file_index < length; ++file_index)
     {
         adjust_update_index(file_index);
@@ -1117,24 +1190,24 @@ static void adjust_update(void)
 
 static void adjust_cleanup(void)
 {
-    if (!_files)
+    if (!_a_files)
         return;
 
     _ADJUST_ENTRY *adjustables;
     size_t i, j, num_adjustables;
-    const size_t length = _da_length(_files);
+    const size_t length = _da_length(_a_files);
 
     for (i = 0; i < length; ++i)
     {
-        _ADJUST_FILE af = _files[i];
-        if (_files[i].file_name)
-            free(af.file_name);
+        _ADJUST_FILE af = _a_files[i];
+        if (_a_files[i].file_name)
+            _a_memory.free(af.file_name, _a_memory.context);
 
-        if (!_files[i].adjustables)
+        if (!_a_files[i].adjustables)
             continue;
 
-        adjustables = _files[i].adjustables;
-        num_adjustables = _da_length(_files[i].adjustables);
+        adjustables = _a_files[i].adjustables;
+        num_adjustables = _da_length(_a_files[i].adjustables);
 
         for (j = 0; j < num_adjustables; ++j)
         {
@@ -1145,7 +1218,7 @@ static void adjust_cleanup(void)
                     char **string_ptr = (char **)adjustables[j].data;
                     if (string_ptr && *string_ptr)
                     {
-                        free(*string_ptr);
+                        _a_memory.free(*string_ptr, _a_memory.context);
                         *string_ptr = NULL;
                     }
                 }
@@ -1153,7 +1226,7 @@ static void adjust_cleanup(void)
                 {
                     if (adjustables[j].data)
                     {
-                        free(adjustables[j].data);
+                        _a_memory.free(adjustables[j].data, _a_memory.context);
                     }
                 }
                 adjustables[j].data = NULL;
@@ -1161,11 +1234,11 @@ static void adjust_cleanup(void)
         }
 
         _da_free(adjustables);
-        _files[i].adjustables = NULL;
+        _a_files[i].adjustables = NULL;
     }
 
-    _da_free(_files);
-    _files = NULL;
+    _da_free(_a_files);
+    _a_files = NULL;
 }
 #endif
 
