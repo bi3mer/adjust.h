@@ -490,7 +490,7 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
     }
     else
     {
-        _a_memory.free(full_file_name, _a_memory.context);
+        free(full_file_name);
 
         _ADJUST_ENTRY *ae =
             _da_priority_insert((void **)&_a_files[file_index].adjustables,
@@ -1175,7 +1175,7 @@ static void adjust_update_file(const char *file_name)
 
     adjust_update_index(file_index);
 
-    _a_memory.free(res, _a_memory.context);
+    free(res);
 }
 
 static void adjust_update(void)
@@ -1201,7 +1201,7 @@ static void adjust_cleanup(void)
     {
         _ADJUST_FILE af = _a_files[i];
         if (_a_files[i].file_name)
-            _a_memory.free(af.file_name, _a_memory.context);
+            free(af.file_name);
 
         if (!_a_files[i].adjustables)
             continue;
