@@ -761,7 +761,7 @@ static void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
     fprintf(stderr,
             "Error: unhandled control flow pattern _adjust_register_and_get "
             "for args %s:%lu\n",
-            file_name, line_number);
+            file_name, (long unsigned int)line_number);
     exit(1);
 }
 
@@ -871,7 +871,7 @@ static void adjust_update_index(const size_t index)
             if (fgets(buffer, sizeof(buffer), file) == NULL)
             {
                 fprintf(stderr, "Error: EOF before line %lu in %s\n",
-                        e.line_number, af.file_name);
+                        (long unsigned int)e.line_number, af.file_name);
                 fclose(file);
                 exit(1);
             }
@@ -887,7 +887,7 @@ static void adjust_update_index(const size_t index)
             {
                 fprintf(stderr,
                         "Error: no comma found in ADJUST macro: %s:%lu\n",
-                        af.file_name, e.line_number);
+                        af.file_name, (long unsigned int)e.line_number);
                 fclose(file);
                 exit(1);
             }
@@ -904,7 +904,7 @@ static void adjust_update_index(const size_t index)
             if (value_start == NULL)
             {
                 fprintf(stderr, "Error: no opening paren found: %s:%lu\n",
-                        af.file_name, e.line_number);
+                        af.file_name, (long unsigned int)e.line_number);
                 fclose(file);
                 exit(1);
             }
@@ -912,7 +912,7 @@ static void adjust_update_index(const size_t index)
         else
         {
             fprintf(stderr, "Error: unrecognized ADJUST macro format: %s:%lu\n",
-                    af.file_name, e.line_number);
+                    af.file_name, (long unsigned int)e.line_number);
             fclose(file);
             exit(1);
         }
@@ -931,7 +931,7 @@ static void adjust_update_index(const size_t index)
             if (sscanf(value_start, "%f", (float *)e.data) != 1)
             {
                 fprintf(stderr, "Error: failed to parse float: %s:%lu\n",
-                        af.file_name, e.line_number);
+                        af.file_name, (long unsigned int)e.line_number);
                 fclose(file);
                 exit(1);
             }
@@ -944,7 +944,7 @@ static void adjust_update_index(const size_t index)
             if (sscanf(value_start, "%i", (int *)e.data) != 1)
             {
                 fprintf(stderr, "Error, failed to parse int: %s:%lu\n",
-                        af.file_name, e.line_number);
+                        af.file_name, (long unsigned int)e.line_number);
                 fclose(file);
                 exit(1);
             }
@@ -969,7 +969,7 @@ static void adjust_update_index(const size_t index)
             {
                 fprintf(stderr,
                         "Error: failed to parse bool (true or false): %s:%lu\n",
-                        af.file_name, e.line_number);
+                        af.file_name, (long unsigned int)e.line_number);
                 fclose(file);
                 exit(1);
             }
@@ -987,7 +987,7 @@ static void adjust_update_index(const size_t index)
                 fprintf(stderr,
                         "Error: failed to find starting quotation (\'): "
                         "%s:%lu\n",
-                        af.file_name, e.line_number);
+                        af.file_name, (long unsigned int)e.line_number);
                 fclose(file);
                 exit(1);
             }
@@ -996,7 +996,7 @@ static void adjust_update_index(const size_t index)
             if (*quote_start == '\'')
             {
                 fprintf(stderr, "Error: char format '' invalid in C, %s:%lu\n",
-                        af.file_name, e.line_number);
+                        af.file_name, (long unsigned int)e.line_number);
                 fclose(file);
                 exit(1);
             }
@@ -1009,7 +1009,7 @@ static void adjust_update_index(const size_t index)
             if (*(quote_start + 1) != '\'')
             {
                 fprintf(stderr, "Error: missing ending ' for char, %s:%lu\n",
-                        af.file_name, e.line_number);
+                        af.file_name, (long unsigned int)e.line_number);
                 fclose(file);
                 exit(1);
             }
@@ -1030,7 +1030,7 @@ static void adjust_update_index(const size_t index)
                 fprintf(stderr,
                         "Error: failed to find starting quotation (\"): "
                         "%s:%lu\n",
-                        af.file_name, e.line_number);
+                        af.file_name, (long unsigned int)e.line_number);
                 fclose(file);
                 exit(1);
             }
@@ -1057,7 +1057,7 @@ static void adjust_update_index(const size_t index)
             {
                 fprintf(stderr,
                         "Error: failed to find ending quotation (\"): %s:%lu\n",
-                        af.file_name, e.line_number);
+                        af.file_name, (long unsigned int)e.line_number);
                 fclose(file);
                 exit(1);
             }
@@ -1069,7 +1069,7 @@ static void adjust_update_index(const size_t index)
             {
                 fprintf(stderr,
                         "Error: failed to reallocate string memory: %s:%lu\n",
-                        af.file_name, e.line_number);
+                        af.file_name, (long unsigned int)e.line_number);
                 fclose(file);
                 exit(1);
             }
