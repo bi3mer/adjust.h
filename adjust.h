@@ -187,7 +187,7 @@ SOFTWARE.
 
 #ifdef MODE_PRODUCTION
 /******************************************************************************/
-/* In production mode, the interface is exposed, but compiles to ntohing      */
+/* In production mode, the interface is exposed, but compiles to nothing      */
 /******************************************************************************/
 #define ADJUST_CONST_BOOL(name, val) const bool name = val
 #define ADJUST_CONST_CHAR(name, val) const char name = val
