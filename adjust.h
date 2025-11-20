@@ -179,6 +179,7 @@ SOFTWARE.
  * - NKONO NDEME Miguel (miguelnkono)
  * - Riccardo Modolo (RickSrick) x2
  * - birds3345
+ * - nezvers
  *
  ******************************************************************************/
 
@@ -252,19 +253,20 @@ typedef struct
 
 _Adjust_Memory_Interface _a_memory;
 
-static void *_a_default_alloc(size_t bytes, void *context)
+static inline void *_a_default_alloc(size_t bytes, void *context)
 {
     (void)context;
     return malloc(bytes);
 }
 
-static void *_a_default_realloc(void *ptr, size_t new_size, void *context)
+static inline void *_a_default_realloc(void *ptr, size_t new_size,
+                                       void *context)
 {
     (void)context;
     return realloc(ptr, new_size);
 }
 
-static void _a_default_free(void *ptr, void *context)
+static inline void _a_default_free(void *ptr, void *context)
 {
     (void)context;
     free(ptr);
@@ -280,7 +282,7 @@ typedef struct _DA_Header
     size_t item_size;
 } _DA_Header;
 
-static void *_da_init(const size_t item_size, const size_t capacity)
+static inline void *_da_init(const size_t item_size, const size_t capacity)
 {
     void *ptr = 0;
     _DA_Header *h = (_DA_Header *)_a_memory.alloc(
@@ -302,7 +304,8 @@ static void *_da_init(const size_t item_size, const size_t capacity)
     return ptr;
 }
 
-static void _da_ensure_capacity(void **da, const size_t capacity_increase)
+static inline void _da_ensure_capacity(void **da,
+                                       const size_t capacity_increase)
 {
     _DA_Header *h = ((_DA_Header *)(*da) - 1);
     if (h->length + capacity_increase > h->capacity)
@@ -328,8 +331,9 @@ static void _da_ensure_capacity(void **da, const size_t capacity_increase)
     }
 }
 
-static void *_da_priority_insert(void **da, const size_t priority,
-                                 int (*compare)(const void *, const size_t))
+static inline void *_da_priority_insert(void **da, const size_t priority,
+                                        int (*compare)(const void *,
+                                                       const size_t))
 {
     size_t i, insert_index;
 
@@ -441,8 +445,9 @@ static inline int _adjust_priority_compare(const void *element,
     return (int)ae->line_number - (int)priority;
 }
 
-static void _adjust_register(void *val, _ADJUST_TYPE type,
-                             const char *file_name, const size_t line_number)
+static inline void _adjust_register(void *val, _ADJUST_TYPE type,
+                                    const char *file_name,
+                                    const size_t line_number)
 {
     _ADJUST_ENTRY *adjustables;
     bool found = false;
@@ -559,9 +564,9 @@ static void _adjust_register(void *val, _ADJUST_TYPE type,
     } while (0)
 
 /* Declarations for global adjustable data */
-static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
-                                    const char *file_name,
-                                    const char *global_name)
+static inline void _adjust_register_global(void *ref, _ADJUST_TYPE type,
+                                           const char *file_name,
+                                           const char *global_name)
 {
     // Make sure the global exists while finding the correct line number
     FILE *file;
@@ -652,9 +657,9 @@ static void _adjust_register_global(void *ref, _ADJUST_TYPE type,
     } while (0)
 
 /* Declarations for temporary data */
-static void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
-                                      const char *file_name,
-                                      const size_t line_number)
+static inline void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
+                                             const char *file_name,
+                                             const size_t line_number)
 {
     _ADJUST_ENTRY *adjustables;
     size_t file_index, i;
@@ -786,7 +791,7 @@ static void *_adjust_register_and_get(const _ADJUST_TYPE type, void *val,
                                          __FILE__, __LINE__)))
 
 /* init, update, and cleanup*/
-static void adjust_init(void)
+static inline void adjust_init(void)
 {
     _a_memory.alloc = _a_default_alloc;
     _a_memory.realloc = _a_default_realloc;
@@ -796,10 +801,10 @@ static void adjust_init(void)
     _a_files = (_ADJUST_FILE *)_da_init(sizeof(_ADJUST_FILE), 4);
 }
 
-static void adjust_init_with_allocator(_adjust_mem_alloc_func m_alloc,
-                                       _adjust_mem_realloc_func m_realloc,
-                                       _adjust_mem_free_func m_free,
-                                       void *context)
+static inline void
+adjust_init_with_allocator(_adjust_mem_alloc_func m_alloc,
+                           _adjust_mem_realloc_func m_realloc,
+                           _adjust_mem_free_func m_free, void *context)
 {
     _a_memory.alloc = m_alloc;
     _a_memory.realloc = m_realloc;
@@ -809,7 +814,7 @@ static void adjust_init_with_allocator(_adjust_mem_alloc_func m_alloc,
     _a_files = (_ADJUST_FILE *)_da_init(sizeof(_ADJUST_FILE), 4);
 }
 
-static void adjust_update_index(const size_t index)
+static inline void adjust_update_index(const size_t index)
 {
     _ADJUST_FILE af;
     _ADJUST_ENTRY e;
@@ -1140,7 +1145,7 @@ static void adjust_update_index(const size_t index)
     fclose(file);
 }
 
-static void adjust_update_file(const char *file_name)
+static inline void adjust_update_file(const char *file_name)
 {
     size_t file_index;
 #if _WIN32
@@ -1178,7 +1183,7 @@ static void adjust_update_file(const char *file_name)
     free(res);
 }
 
-static void adjust_update(void)
+static inline void adjust_update(void)
 {
     size_t file_index;
     const size_t length = _da_length(_a_files);
@@ -1188,7 +1193,7 @@ static void adjust_update(void)
     }
 }
 
-static void adjust_cleanup(void)
+static inline void adjust_cleanup(void)
 {
     if (!_a_files)
         return;
