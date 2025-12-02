@@ -147,6 +147,10 @@ SOFTWARE.
  *       adjust_register_global_int(g_a);
  *       ```
  *
+ *    3. If you declare a global_int and register it as a float, there is an
+ *       error that is not detected, but is breaking. This should be detected
+ *       and reported as an error.
+ *
  * ====================== FAQ ======================
  *
  *  --> Did you come up with the idea behind adjust.h?
