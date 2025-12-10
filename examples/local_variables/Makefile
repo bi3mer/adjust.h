@@ -1,5 +1,5 @@
 CC = cc
-CFLAGS = -Wall -Wextra -Wpedantic -std=c99 -g -DMODE_DEBUG
+CFLAGS = -Wall -Wextra -Wpedantic -std=c99 -g -DMODE_PRODUCTION
 LDFLAGS =
 LDLIBS =
 INCLUDES = -I./  # For adjust.h

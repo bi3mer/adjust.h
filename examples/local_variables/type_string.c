@@ -1,12 +1,19 @@
-#include "adjust.h"
 #include <stdio.h>
 #include <unistd.h>
 
-int get_int(void);
+#define ADJUST_IMPLEMENTATION
+#include "adjust.h"
+
+static inline char *get_string(void)
+{
+    return ADJUST_STRING("Hello, World!");
+}
 
 int main(void)
 {
     adjust_init();
+
+    printf("Before: %s\n", get_string());
 
     for (size_t countdown = 5; countdown > 0; countdown--)
     {
@@ -14,16 +21,11 @@ int main(void)
         sleep(1);
     }
 
-    printf("Before: %i\n", get_int());
+    printf("Before: %s\n", get_string());
     adjust_update();
-    printf("After: %i\n", get_int());
+    printf("After: %s\n", get_string());
 
     adjust_cleanup();
 
     return 0;
-}
-
-int get_int(void)
-{
-    return ADJUST_INT(-4000);
 }

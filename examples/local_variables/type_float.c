@@ -1,16 +1,14 @@
-#include "adjust.h"
 #include <stdio.h>
 #include <unistd.h>
 
-bool get_bool(void)
-{
-    return ADJUST_BOOL(true);
-}
+#define ADJUST_IMPLEMENTATION
+#include "adjust.h"
+
+float get_float(void);
 
 int main(void)
 {
     adjust_init();
-    bool before = get_bool();
 
     for (size_t countdown = 5; countdown > 0; countdown--)
     {
@@ -18,9 +16,16 @@ int main(void)
         sleep(1);
     }
 
-    printf("Before: %i\n", before);
+    printf("Before: %f\n", get_float());
     adjust_update();
-    printf("After: %i\n", get_bool());
+    printf("After: %f\n", get_float());
 
     adjust_cleanup();
+
+    return 0;
+}
+
+float get_float(void)
+{
+    return ADJUST_FLOAT(3.3f);
 }

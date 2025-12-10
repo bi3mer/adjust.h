@@ -19,8 +19,10 @@
  *
  ********************************************************************************************/
 
-#include "adjust.h"
-#include "raylib.h" // m
+#include "raylib.h"
+
+#define ADJUST_IMPLEMENTATION // m
+#include "adjust.h"           // m
 
 //------------------------------------------------------------------------------------
 // Program main entry point

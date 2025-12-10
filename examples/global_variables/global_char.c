@@ -1,5 +1,8 @@
-#include "adjust.h"
+#include <stdio.h>
 #include <unistd.h>
+
+#define ADJUST_IMPLEMENTATION
+#include "adjust.h"
 
 ADJUST_GLOBAL_CONST_CHAR(g_a, 'a');
 ADJUST_GLOBAL_VAR_CHAR(g_b, 'b');
