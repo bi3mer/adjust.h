@@ -1,8 +1,11 @@
-#include "adjust.h"
+#include <stdio.h>
 #include <unistd.h>
 
-ADJUST_GLOBAL_CONST_STRING(g_a, "Hello, World!");
-ADJUST_GLOBAL_VAR_STRING(g_b, "Goodbye, \"quotations \t\" friends!");
+#define ADJUST_IMPLEMENTATION
+#include "adjust.h"
+
+ADJUST_GLOBAL_CONST_STRING(g_a, "Hell, World!");
+ADJUST_GLOBAL_VAR_STRING(g_b, "Goodbasdfasdfye, \"quotations \t\" friends!");
 
 int main(void)
 {

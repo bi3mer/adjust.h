@@ -1,5 +1,8 @@
-#include "adjust.h"
+#include <stdio.h>
 #include <unistd.h>
+
+#define ADJUST_IMPLEMENTATION
+#include "adjust.h"
 
 int main(void)
 {

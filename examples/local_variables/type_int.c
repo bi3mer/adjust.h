@@ -1,8 +1,10 @@
-#include "adjust.h"
 #include <stdio.h>
 #include <unistd.h>
 
-char get_char(void);
+#define ADJUST_IMPLEMENTATION
+#include "adjust.h"
+
+int get_int(void);
 
 int main(void)
 {
@@ -14,16 +16,16 @@ int main(void)
         sleep(1);
     }
 
-    printf("Before: %c\n", get_char());
+    printf("Before: %i\n", get_int());
     adjust_update();
-    printf("After: %c\n", get_char());
+    printf("After: %i\n", get_int());
 
     adjust_cleanup();
 
     return 0;
 }
 
-char get_char(void)
+int get_int(void)
 {
-    return ADJUST_CHAR('c');
+    return ADJUST_INT(-4000);
 }

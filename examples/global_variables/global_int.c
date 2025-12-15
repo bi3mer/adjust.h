@@ -1,5 +1,8 @@
-#include "adjust.h"
+#include <stdio.h>
 #include <unistd.h>
+
+#define ADJUST_IMPLEMENTATION
+#include "adjust.h"
 
 ADJUST_GLOBAL_CONST_INT(g_a, 10);
 ADJUST_GLOBAL_CONST_INT(g_b, 100);
