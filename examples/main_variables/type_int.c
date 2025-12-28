@@ -13,7 +13,7 @@ int main(void)
     for (size_t countdown = 5; countdown > 0; countdown--)
     {
         printf("%lu...\n", countdown);
-        sleep(9);
+        sleep(5);
     }
 
     printf("\nBEFORE\n");

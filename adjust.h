@@ -176,7 +176,7 @@ SOFTWARE.
  * - Colan Biemer (bi3mer)
  * - gouwsxander
  * - vatsanant (Peanut)
- * - NKONO NDEME Miguel (miguelnkono)
+ * - NKONO NDEME Miguel (miguelnkono) x2
  * - Riccardo Modolo (RickSrick) x2
  * - birds3345
  * - nezvers
